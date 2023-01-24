@@ -1,0 +1,42 @@
+{
+  "name": "ec-elgamal-circuit",
+  "version": "1.0.0",
+  "description": "Circom2 Circuit of ElGamal Scheme over alt_bn128 Curve",
+  "main": "index.js",
+  "scripts": {
+    "test": "ts-mocha --timeout 500000 ./test/*.test.ts",
+    "test-utils": "ts-mocha --timeout 500000 ./build/test/*.test.ts",
+    "circom:dev": "hardhat circom --deterministic --verbose",
+    "delete-artifacts": "hardhat clean & rm -r contracts",
+    "build": "npx ts-node ./build/alt_bn128.ts",
+    "bench-add": "snarkjs ri ./artifacts/addPoint_test.r1cs",
+    "bench-multiply": "snarkjs ri ./artifacts/multiplyPoint_test.r1cs",
+    "bench-double": "snarkjs ri ./artifacts/doublePoint_test.r1cs", 
+    "bench-encrypt": "snarkjs ri ./artifacts/encrypt_test.r1cs", 
+    "bench-decrypt": "snarkjs ri ./artifacts/decrypt_test.r1cs",
+    "benchmark-ec": "npm run bench-add && npm run bench-double && npm run bench-multiply",
+    "benchmark-elgamal": "npm run bench-encrypt && npm run bench-decrypt",
+    "benchmark": "npm run benchmark-ec && npm run benchmark-elgamal"
+  },
+  "keywords": [
+    "ZKP",
+    "circom2",
+    "elgamal",
+    "homomorphic",
+    "alt_bn128"
+  ],
+  "author": "Shigoto-dev19",
+  "license": "ISC",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^2.0.1",
+    "circomlib": "^2.0.5",
+    "ffjavascript": "^0.2.57",
+    "fs": "^0.0.1-security",
+    "hardhat-circom": "^3.3.2",
+    "mocha": "^10.2.0",
+    "snarkjs": "^0.5.0",
+    "ts-mocha": "^10.0.0",
+    "ts-node": "^10.9.1",
+    "typescript": "^4.9.4"
+  }
+}
