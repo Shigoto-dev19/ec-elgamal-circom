@@ -1,0 +1,17 @@
+{
+  "name": "workerpool",
+  "version": "1.0.0",
+  "description": "Theading for faster decoding computation",
+  "main": "main.js",
+  
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node main.js"
+  },
+  "keywords": [
+    "Threading",
+    "Worker_threads"
+  ],
+  "author": "Shigoto-dev19",
+  "license": "ISC"
+}

@@ -3,10 +3,13 @@ pragma circom 2.1.2;
 include "addPoint.circom";
 include "../node_modules/circomlib/circuits/bitify.circom";
 
-// n is the bits number of the coefficient: it can be 254 or the specific bit length of the coefficient
+/// @param n is the bits number of the coefficient: it can be 254 or the specific bit length of the coefficient
+/// @notice n can be ommitted for security purposes
+/// @dev Double and Add is used for point scalar multiplication 
 
 template MultiplyPoint(n) {
     
+    n === 254;
     signal input c;                         // c is the coefficient
     signal input p[2];
     signal output out[2];

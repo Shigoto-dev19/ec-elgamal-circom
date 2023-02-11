@@ -8,6 +8,7 @@ template DoublePoint () {
     
     signal m1;
     signal m2;
+    
     m1 <== 3 * p[0] * p[0]; 
     m2 <== 2 * p[1];
     m <-- m1 / m2;

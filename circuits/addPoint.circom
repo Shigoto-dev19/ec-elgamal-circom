@@ -63,7 +63,7 @@ template AddPoint() {
 
     isz[2].in <== p2[0];
     isz[3].in <== p2[1];
-    signal c2 <== isz[2].out * isz[3].out; // check if the first point is the IDENTITY point
+    signal c2 <== isz[2].out * isz[3].out; // check if the second point is the IDENTITY point
     //log("c2: ",c2);
 
 
@@ -80,9 +80,9 @@ template AddPoint() {
 
     component doublePoint = DoublePoint();
     doublePoint.p <== p1;
-    signal db[2] <== doublePoint.out; // calculate double
+    signal db[2] <== doublePoint.out;      
 
-    component addDiff = AddDiffPoint();
+    component addDiff = AddDiffPoint();     
     addDiff.p1 <== p1;
     addDiff.p2 <== p2;
     signal difp[2] <== addDiff.out;

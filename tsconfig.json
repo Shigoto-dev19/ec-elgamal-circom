@@ -1,12 +1,13 @@
 {
   "compilerOptions": {
     
-    "target": "es2020",                                  
+    "target": "es2022",                                  
     "module": "commonjs",                                
     "forceConsistentCasingInFileNames": true,            
     "strict": false,                                     
     "noImplicitAny": false,               
-    "skipLibCheck": true   
+    "skipLibCheck": true,
+    "allowJs": true   
                                  
   }
 }

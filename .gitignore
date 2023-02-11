@@ -10,6 +10,11 @@ cache
 artifacts
 contracts
 
+# Build
+./lookupTables/binTables
+./lookupTables/*.json
+./build/workerPool
+./build/bin-utils.ts
 
 node_modules
 .env
