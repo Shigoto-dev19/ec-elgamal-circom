@@ -14,8 +14,8 @@ const G = Point.BASE;
 
 describe('Point Addition Circuit Tests', () => {
 
-    let wasm_path = "./artifacts/addPoint/addPoint.wasm";
-    let zkey_path = "./artifacts/addPoint/addPoint.zkey";
+    let wasm_path = "./circuits/artifacts/addPoint_test/addPoint.wasm";
+    let zkey_path = "./circuits/artifacts/addPoint_test/addPoint.zkey";
     
    
     it('Verify addPoint circuit', async () => {
@@ -23,7 +23,7 @@ describe('Point Addition Circuit Tests', () => {
         const input = ({"p1": [5,10], "p2": [1,2]});
 
         const { proof, publicSignals } = await snarkjs.groth16.fullProve(input, wasm_path, zkey_path);  
-        const vKey = JSON.parse(fs.readFileSync("./artifacts/addPoint_test.vkey.json"));
+        const vKey = JSON.parse(fs.readFileSync("./circuits/artifacts/addPoint_test/addPoint.vkey.json"));
         
         const res = await snarkjs.groth16.verify(vKey, publicSignals, proof);
         expect(res).to.equal(true);    

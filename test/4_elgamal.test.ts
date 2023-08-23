@@ -10,14 +10,14 @@ describe('Testing Noble ElGamal Scheme Circuits\n', () => {
 
     context('Testing Encrypt Circuit', () => {
 
-        let wasm_path = "./artifacts/encrypt/encrypt.wasm";
-        let zkey_path = "./artifacts/encrypt/encrypt.zkey";
+        let wasm_path = "./circuits/artifacts/encrypt_test/encrypt.wasm";
+        let zkey_path = "./circuits/artifacts/encrypt_test/encrypt.zkey";
         const input = JSON.parse(fs.readFileSync("./circuits/inputs/encrypt.json"));
     
         it('Verify Encrypt circuit', async() => {
 
             const { proof, publicSignals } = await snarkjs.groth16.fullProve(input, wasm_path, zkey_path);  
-            const vKey = JSON.parse(fs.readFileSync("./artifacts/encrypt_test.vkey.json"));
+            const vKey = JSON.parse(fs.readFileSync("./circuits/artifacts/encrypt_test/encrypt.vkey.json"));
             
             //console.log(publicSignals);
             const res = await snarkjs.groth16.verify(vKey, publicSignals, proof);
@@ -139,14 +139,14 @@ describe('Testing Noble ElGamal Scheme Circuits\n', () => {
 
     context('Testing Decrypt Circuit', () => {
         
-        let wasm_path = "./artifacts/decrypt/decrypt.wasm";
-        let zkey_path = "./artifacts/decrypt/decrypt.zkey";
+        let wasm_path = "./circuits/artifacts/decrypt_test/decrypt.wasm";
+        let zkey_path = "./circuits/artifacts/decrypt_test/decrypt.zkey";
         const input = JSON.parse(fs.readFileSync("./circuits/inputs/decrypt.json"));
     
         it('Verify Decrypt circuit', async() => {
 
             const { proof, publicSignals } = await snarkjs.groth16.fullProve(input, wasm_path, zkey_path);  
-            const vKey = JSON.parse(fs.readFileSync("./artifacts/decrypt_test.vkey.json"));
+            const vKey = JSON.parse(fs.readFileSync("./circuits/artifacts/decrypt_test/decrypt.vkey.json"));
             
             //console.log(publicSignals);
             const res = await snarkjs.groth16.verify(vKey, publicSignals, proof);
@@ -278,13 +278,13 @@ describe('Testing Noble ElGamal Scheme Circuits\n', () => {
 
             it("Verify the circuits according to the given JSON inputs", async () => {
 
-                const wasm_path_encrypt = "./artifacts/encrypt/encrypt.wasm";
-                const zkey_path_encrypt = "./artifacts/encrypt/encrypt.zkey";
+                const wasm_path_encrypt = "./circuits/artifacts/encrypt_test/encrypt.wasm";
+                const zkey_path_encrypt = "./circuits/artifacts/encrypt_test/encrypt.zkey";
                 const input_encrypt = JSON.parse(fs.readFileSync("./circuits/inputs/encrypt.json"));
                 
 
-                const wasm_path_decrypt = "./artifacts/decrypt/decrypt.wasm";
-                const zkey_path_decrypt = "./artifacts/decrypt/decrypt.zkey";
+                const wasm_path_decrypt = "./circuits/artifacts/decrypt_test/decrypt.wasm";
+                const zkey_path_decrypt = "./circuits/artifacts/decrypt_test/decrypt.zkey";
                 const input_decrypt_json = JSON.parse(fs.readFileSync("./circuits/inputs/decrypt.json"));
                 
                 // This function is used to avoid block-redeclaration error
@@ -320,11 +320,11 @@ describe('Testing Noble ElGamal Scheme Circuits\n', () => {
                     "pk": [public_key.toAffine().x.toString(), public_key.toAffine().y.toString()]
                 };
 
-                const wasm_path_encrypt = "./artifacts/encrypt/encrypt.wasm";
-                const zkey_path_encrypt = "./artifacts/encrypt/encrypt.zkey";
+                const wasm_path_encrypt = "./circuits/artifacts/encrypt_test/encrypt.wasm";
+                const zkey_path_encrypt = "./circuits/artifacts/encrypt_test/encrypt.zkey";
                 
-                const wasm_path_decrypt = "./artifacts/decrypt/decrypt.wasm";
-                const zkey_path_decrypt = "./artifacts/decrypt/decrypt.zkey";
+                const wasm_path_decrypt = "./circuits/artifacts/decrypt_test/decrypt.wasm";
+                const zkey_path_decrypt = "./circuits/artifacts/decrypt_test/decrypt.zkey";
                 
                 // This function is used to avoid block-redeclaration error
                 async function getEncryptOutputs(input_encrypt, wasm_path_encrypt, zkey_path_encrypt) {                                                                                                    
@@ -361,11 +361,11 @@ describe('Testing Noble ElGamal Scheme Circuits\n', () => {
                         "k" : k.toString(),
                         "pk": [public_key.toAffine().x.toString(), public_key.toAffine().y.toString()]
                     };
-                    let wasm_path_encrypt = "./artifacts/encrypt/encrypt.wasm";
-                    let zkey_path_encrypt = "./artifacts/encrypt/encrypt.zkey";
+                    let wasm_path_encrypt = "./circuits/artifacts/encrypt_test/encrypt.wasm";
+                    let zkey_path_encrypt = "./circuits/artifacts/encrypt_test/encrypt.zkey";
                     
-                    let wasm_path_decrypt = "./artifacts/decrypt/decrypt.wasm";
-                    let zkey_path_decrypt = "./artifacts/decrypt/decrypt.zkey";
+                    let wasm_path_decrypt = "./circuits/artifacts/decrypt_test/decrypt.wasm";
+                    let zkey_path_decrypt = "./circuits/artifacts/decrypt_test/decrypt.zkey";
                     
                     // This function is used to avoid block-redeclaration error
                     async function getEncryptOutputs(input_encrypt, wasm_path_encrypt, zkey_path_encrypt) {                                                                                                    
@@ -409,8 +409,8 @@ describe('Testing Noble ElGamal Scheme Circuits\n', () => {
                     "pk": [public_key.toAffine().x.toString(), public_key.toAffine().y.toString()]
                     };
 
-                const wasm_path_encrypt = "./artifacts/encrypt/encrypt.wasm";
-                const zkey_path_encrypt = "./artifacts/encrypt/encrypt.zkey";
+                const wasm_path_encrypt = "./circuits/artifacts/encrypt_test/encrypt.wasm";
+                const zkey_path_encrypt = "./circuits/artifacts/encrypt_test/encrypt.zkey";
                 
                 // This function is used to avoid block-redeclaration error
                 async function getEncryptOutputs(input_encrypt, wasm_path_encrypt, zkey_path_encrypt) {                                                                                                    
@@ -433,8 +433,8 @@ describe('Testing Noble ElGamal Scheme Circuits\n', () => {
                 const ke2 = new Point(BigInt(publicSignals_encrypt2[0]), BigInt(publicSignals_encrypt2[1]),1n);   // Take the ephemeral key ke2 ,1nfrom the circuit output 
                 const ke3 = ke1.add(ke2);                                                                         // The ephemeral key for homomorphic decryption should be the ke1+ke2   
                 
-                const wasm_path_decrypt = "./artifacts/decrypt/decrypt.wasm";
-                const zkey_path_decrypt = "./artifacts/decrypt/decrypt.zkey";
+                const wasm_path_decrypt = "./circuits/artifacts/decrypt_test/decrypt.wasm";
+                const zkey_path_decrypt = "./circuits/artifacts/decrypt_test/decrypt.zkey";
 
                 // The input of the decrypt circuit is given by the added outputs of the encrypt circuit for M1 and M2
                 const input_decrypt = {

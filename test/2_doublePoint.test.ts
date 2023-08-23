@@ -6,14 +6,14 @@ const G = Point.BASE;
 
 describe('Double Point Circuit Tests', () => {
 
-    let wasm_path = "./artifacts/doublePoint/doublePoint.wasm";
-    let zkey_path = "./artifacts/doublePoint/doublePoint.zkey";
+    let wasm_path = "./circuits/artifacts/doublePoint_test/doublePoint.wasm";
+    let zkey_path = "./circuits/artifacts/doublePoint_test/doublePoint.zkey";
     const input = ({"p": [1,2]});
    
     it('Verify doublePoint circuit', async () => {
 
         const { proof, publicSignals } = await snarkjs.groth16.fullProve(input, wasm_path, zkey_path);  
-        const vKey = JSON.parse(fs.readFileSync("./artifacts/doublePoint_test.vkey.json"));
+        const vKey = JSON.parse(fs.readFileSync("./circuits/artifacts/doublePoint_test/doublePoint.vkey.json"));
         
         const res = await snarkjs.groth16.verify(vKey, publicSignals, proof);
         expect(res).to.equal(true);    

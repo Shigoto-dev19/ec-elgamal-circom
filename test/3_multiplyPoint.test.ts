@@ -6,14 +6,14 @@ const fp = 218882428718392752222464057452572750885483644004160343436982041865758
 
 describe('Scalar Multiplication Circuit Tests', () => {
 
-    let wasm_path = "./artifacts/multiplyPoint/multiplyPoint.wasm";
-    let zkey_path = "./artifacts/multiplyPoint/multiplyPoint.zkey";
+    let wasm_path = "./circuits/artifacts/multiplyPoint_test/multiplyPoint.wasm";
+    let zkey_path = "./circuits/artifacts/multiplyPoint_test/multiplyPoint.zkey";
     const input = ({"p": [1,2], "c":25});
    
     it('Verify scalar multiplication circuit', async() => {
 
         const { proof, publicSignals } = await snarkjs.groth16.fullProve(input, wasm_path, zkey_path);  
-        const vKey = JSON.parse(fs.readFileSync("./artifacts/multiplyPoint_test.vkey.json"));
+        const vKey = JSON.parse(fs.readFileSync("./circuits/artifacts/multiplyPoint_test/multiplyPoint.vkey.json"));
         
         const res = await snarkjs.groth16.verify(vKey, publicSignals, proof);
         expect(res).to.equal(true);    
