@@ -12,7 +12,7 @@ const config: HardhatUserConfig = {
         // (optional) Base path for files being output, defaults to `./artifacts/`
         outputBasePath: "./artifacts",
         // (required) The final ptau file, relative to inputBasePath, from a Phase 1 ceremony
-        ptau: "https://hermezptau.blob.core.windows.net/ptau/powersOfTau28_hez_final_15.ptau",
+        ptau: "https://hermez.s3-eu-west-1.amazonaws.com/powersOfTau28_hez_final_15.ptau",
         // (required) Each object in this array refers to a separate circuit
         circuits: [
           {
