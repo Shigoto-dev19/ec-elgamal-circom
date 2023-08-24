@@ -1,10 +1,13 @@
 pragma circom 2.1.2;
 
 include "../node_modules/circomlib/circuits/comparators.circom";
-include "multiplyPoint.circom";
-include "onCurve.circom";
+include "../node_modules/circomlib/circuits/babyjub.circom";
+include "../node_modules/circomlib/circuits/bitify.circom";
+include "../node_modules/circomlib/circuits/escalarmul.circom";
+include "../node_modules/circomlib/circuits/escalarmulfix.circom";
 
-template Encrypt () {
+// TODO: check if isOnCurve is need -> examine from circomlib
+template Encrypt() {
     
     signal input M[2];              // message encoded as a point on the curve: M = [x]G
     signal input k;                 // secret key nonce
@@ -21,33 +24,74 @@ template Encrypt () {
     }
     isz[0].out * isz[1].out === 0;  // protect against invalid curve attacks
 
-    component onc[2];
+    component isOnCurve[2];
 
-    onc[0] = OnCurve();             // check the public key is point on curve
-    onc[0].p <== pk;
-    onc[0].out === 1;
+    isOnCurve[0] = BabyCheck();             // check the public key is point on curve
+    isOnCurve[0].x <== pk[0];
+    isOnCurve[0].y <== pk[1];
+ 
     
-    onc[1] = OnCurve();             // check the Message is a point on curve
-    onc[1].p <== M;
-    onc[1].out === 1;
+    isOnCurve[1] = BabyCheck();             // check the Message is a point on curve
+    isOnCurve[1].x <== M[0];
+    isOnCurve[1].y <== M[1];
     
+    // baby jubjub curve generator
+    var base[2] = [
+        5299619240641551281634865583518297030282874472190772894086521144482721001553,
+        16950150798460657717958625567821834550301663161624707787222815936182638968203
+    ];        
 
-    signal g[2] <== [1,2];          // alt_bn128 curve generator
+    component n2b[2];
+    // calculate the ephemeral key
+    n2b[0] = Num2Bits(253);
+    component escalarMulF = EscalarMulFix(253, base);
 
-    component multiply[2];
-    multiply[0] = MultiplyPoint(254);
-    multiply[0].p <== g;
-    multiply[0].c <== k;
-    ke <== multiply[0].out;
+    var i;
 
-    component add = AddPoint();
-    multiply[1] = MultiplyPoint(254);
-    multiply[1].p <== pk;
-    multiply[1].c <== k;
-    add.p1 <== multiply[1].out;
-    add.p2 <== M;
-    eM <== add.out;
+    k ==> n2b[0].in;
+
+    for  (i=0; i<253; i++) {
+        n2b[0].out[i] ==> escalarMulF.e[i];
+    }
+
+    escalarMulF.out[0] ==> ke[0];
+    escalarMulF.out[1] ==> ke[1];
+
+    // multiply[0] = MultiplyPoint(254);
+    // multiply[0].p <== g;
+    // multiply[0].c <== k;
+    // ke <== multiply[0].out;
     
+    // calculate the second part of the encrypted message => [k]pk
+    n2b[1] = Num2Bits(253);
+    component escalarMul = EscalarMul(253, base);
+
+    escalarMul.inp[0] <== pk[0];
+    escalarMul.inp[1] <== pk[1];
+
+    var j;
+
+    k ==> n2b[1].in;
+
+    for  (j=0; j<253; j++) {
+        n2b[1].out[j] ==> escalarMul.in[j];
+    }
+
+    // escalarMul.out[0] ==> out[0];
+    // escalarMul.out[1] ==> out[1];
+
+    // multiply[1] = MultiplyPoint(254);
+    // multiply[1].p <== pk;
+    // multiply[1].c <== k;
+
+    component add = BabyAdd();
+    add.x1 <== escalarMul.out[0];
+    add.y1 <== escalarMul.out[1];
+    add.x2 <== M[0];
+    add.y2 <== M[1];
+    eM[0] <== add.xout;
+    eM[1] <== add.yout;
+
 }
 
 //component main { public [ pk ] } = Encrypt();

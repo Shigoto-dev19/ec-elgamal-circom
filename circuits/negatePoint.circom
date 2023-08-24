@@ -1,14 +1,14 @@
 pragma circom 2.1.2;
 
-include "addPoint.circom";
+include "../node_modules/circomlib/circuits/babyjub.circom";
 
 template Negate() {
     
     signal input p[2];
     signal output out[2];
 
-    out[0] <== p[0];
-    out[1] <== - p[1];
+    out[0] <== - p[0];
+    out[1] <== p[1];
 }
 
 template AddNegate() {
@@ -17,15 +17,19 @@ template AddNegate() {
     signal input p2[2];
     signal output out[2];
 
-    component add = AddPoint();
+    component add = BabyAdd();
     component negate = Negate();
 
     negate.p <== p2;
 
-    add.p1 <== p1;
-    add.p2 <== negate.out;
+    add.x1 <== p1[0];
+    add.y1 <== p1[1];
+    add.x2 <== negate.out[0];
+    add.y2 <== negate.out[1];
 
-    out <== add.out;
+    out[0] <== add.xout;
+    out[1] <== add.yout;
+
 }
 
 template TestNegate() {
@@ -33,17 +37,20 @@ template TestNegate() {
     signal input p[2];
     signal output out[2];
 
-    component add = AddDiffPoint();
+    component add = BabyAdd();
     component negate = Negate();
 
     negate.p <== p;
-    add.p1 <== p;
-    add.p2 <== negate.out;
+    add.x1 <== p[0];
+    add.y1 <== p[1];
+    add.x2 <== negate.out[0];
+    add.y2 <== negate.out[1];
 
-    out <== add.out;   
+    out[0] <== add.xout;
+    out[1] <== add.yout;  
 }
 
-//component main = AddNegate();
+// component main = AddNegate();
 
 /* INPUT = {
 

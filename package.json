@@ -1,7 +1,7 @@
 {
   "name": "ec-elgamal-circuit",
   "version": "2.0.0",
-  "description": "Circom2 Circuit of ElGamal Scheme over Babay Jubjub Curve",
+  "description": "Circom2 Circuit of ElGamal Scheme over Baby Jubjub Curve",
   "main": "index.js",
   "scripts": {
     "ptau": "./scripts/ptau.sh",
@@ -9,9 +9,8 @@
     "setup": "yarn build-circuit addPoint_test",
     "fetch_table": "yarn ts-node ./build/fetch_table",
     "test": "ts-mocha --timeout 500000 ./test/*.test.ts --exit",
+    "test-elgamal": "ts-mocha --timeout 50000000 ./src/test/*.test.ts --quiet --exit",
     "test-utils": "ts-mocha --timeout 500000 ./build/test/*.test.ts",
-    "circom:dev": "yarn hardhat circom --deterministic --verbose",
-    "delete-artifacts": "hardhat clean & rm -r contracts",
     "delete-lookupTables": "rm ./lookupTables/*.json",
     "precompute-lookupTable": "yarn ts-node ./build/precompute.ts",
     "bench-add": "snarkjs ri ./circuits/artifacts/addPoint_test/addPoint.r1cs",
@@ -28,7 +27,7 @@
     "circom2",
     "elgamal",
     "homomorphic",
-    "alt_bn128"
+    "baby jubjub"
   ],
   "author": "Shigoto-dev19",
   "license": "ISC",
@@ -36,9 +35,13 @@
     "@noble/curves": "^1.1.0",
     "@types/chai": "^4.3.5",
     "@types/mocha": "^10.0.1",
+    "@types/node": "^20.5.3",
     "chai": "^4.3.7",
+    "circom_tester": "^0.0.19",
     "circomlib": "^2.0.5",
+    "circomlibjs": "^0.1.7",
     "cli-progress": "^3.11.2",
+    "ffjavascript": "^0.2.60",
     "fs": "^0.0.1-security",
     "mocha": "^10.2.0",
     "snarkjs": "^0.5.0",

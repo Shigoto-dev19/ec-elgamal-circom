@@ -4,7 +4,7 @@ import {snarkjs, expect, fs, bn254, getRandomPoint} from "./1_addPoint.test";
 const Point = bn254.ProjectivePoint; 
 const G = Point.BASE;
 
-describe('Double Point Circuit Tests', () => {
+describe.skip('Double Point Circuit Tests', () => {
 
     let wasm_path = "./circuits/artifacts/doublePoint_test/doublePoint.wasm";
     let zkey_path = "./circuits/artifacts/doublePoint_test/doublePoint.zkey";

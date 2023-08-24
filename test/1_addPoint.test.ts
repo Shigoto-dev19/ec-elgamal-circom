@@ -12,7 +12,7 @@ const G = Point.BASE;
 //const curve = bn254.CURVE;
 //const fp = 21888242871839275222246405745257275088548364400416034343698204186575808495617n; 
 
-describe('Point Addition Circuit Tests', () => {
+describe.skip('Point Addition Circuit Tests', () => {
 
     let wasm_path = "./circuits/artifacts/addPoint_test/addPoint.wasm";
     let zkey_path = "./circuits/artifacts/addPoint_test/addPoint.zkey";

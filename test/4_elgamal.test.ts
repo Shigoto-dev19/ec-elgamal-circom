@@ -1,4 +1,4 @@
-import {snarkjs, expect, fs, bn254, getRandomPoint, getInRange} from "./1_addPoint.test";
+import {snarkjs, expect, fs, bn254} from "./1_addPoint.test";
 import { encrypt_s, encrypt, decrypt, key_pair } from "../build/elgamal";
 
 const Point = bn254.ProjectivePoint; 
@@ -6,7 +6,6 @@ const G = Point.BASE;
 const fp = 21888242871839275222246405745257275088548364400416034343698204186575808495617n; 
 
 describe('Testing Noble ElGamal Scheme Circuits\n', () => {
-
 
     context('Testing Encrypt Circuit', () => {
 
@@ -19,7 +18,6 @@ describe('Testing Noble ElGamal Scheme Circuits\n', () => {
             const { proof, publicSignals } = await snarkjs.groth16.fullProve(input, wasm_path, zkey_path);  
             const vKey = JSON.parse(fs.readFileSync("./circuits/artifacts/encrypt_test/encrypt.vkey.json"));
             
-            //console.log(publicSignals);
             const res = await snarkjs.groth16.verify(vKey, publicSignals, proof);
             expect(res).to.equal(true);    
 

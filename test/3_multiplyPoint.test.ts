@@ -4,7 +4,7 @@ const Point = bn254.ProjectivePoint;
 const G = Point.BASE;
 const fp = 21888242871839275222246405745257275088548364400416034343698204186575808495617n; 
 
-describe('Scalar Multiplication Circuit Tests', () => {
+describe.skip('Scalar Multiplication Circuit Tests', () => {
 
     let wasm_path = "./circuits/artifacts/multiplyPoint_test/multiplyPoint.wasm";
     let zkey_path = "./circuits/artifacts/multiplyPoint_test/multiplyPoint.zkey";
