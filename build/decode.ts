@@ -1,11 +1,8 @@
-import { bn254 } from './noble_bn254'; 
-import { ProjPointType } from './abstract/weierstrass';
+const buildBabyjub = require("circomlibjs").buildBabyjub;
 import { fetch_table } from './fetch_table';
 
 export {decode, encode, split64};
 
-const Point = bn254.ProjectivePoint;
-const base = Point.BASE;
 let lookupTable;
 
 /**
@@ -15,7 +12,7 @@ let lookupTable;
  * @returns decoded message x from [x]G
  */
 
-function decode(C : ProjPointType<bigint>, pc : number) : bigint {
+async function decode(C, pc : number) : Promise<bigint> {
   
     /* The first time decode is called, it will call fetch_table() and store the lookupTable variable. 
        Subsequent calls to fetchTable() will use the table stored in the lookupTable variable, rather than calling functionA again.
@@ -24,13 +21,18 @@ function decode(C : ProjPointType<bigint>, pc : number) : bigint {
     if (!lookupTable) {
         lookupTable = fetch_table(pc);
     }  
+    const babyjub = await buildBabyjub();
+    const Fr = babyjub.F;
 
     const n = 32 - pc;                                       
     const end = BigInt(2)**BigInt(pc);
     
     for (let xlo=BigInt(0); xlo< end; xlo++) {
-
-        let key = C.subtract(base.multiplyUnsafe(xlo)).toAffine().x.toString(16);  
+        let loBase = babyjub.mulPointEscalar(babyjub.Base8, xlo);
+        loBase[0] = Fr.neg(loBase[0]);
+        let key = babyjub.addPoint(loBase, C);
+        key = Fr.toString(key[0])
+        // let key = C.subtract(base.multiplyUnsafe(xlo)).toAffine().x.toString(16);  
         
         if (lookupTable.hasOwnProperty(key)) {
 
@@ -39,10 +41,11 @@ function decode(C : ProjPointType<bigint>, pc : number) : bigint {
     }           
 } 
 
-function encode(x : bigint) : ProjPointType<bigint> {
-    
+async function encode(x : bigint) {
+    const babyjub = await buildBabyjub();
+    const Fr = babyjub.F;
     if (x <= BigInt(2)**BigInt(32)) {
-        return base.multiply(x)
+        return babyjub.mulPointEscalar(babyjub.Base8, x); //base.multiply(x)
     }  
     else throw new Error('The input should be 32-bit bigint')
     

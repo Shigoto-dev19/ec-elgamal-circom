@@ -1,4 +1,4 @@
-import { bn254 } from './noble_bn254'; 
+const buildBabyjub = require("circomlibjs").buildBabyjub;
 const fs = require('fs');
 
 const ProgressBar = require('cli-progress');
@@ -17,10 +17,16 @@ const bar = new ProgressBar.SingleBar({
  * @returns an object that contains 2**pc_size of keys and values
  */
 
-function precompute(pc_size) {
-
-    const Point = bn254.ProjectivePoint;
-    const base = Point.BASE;
+async function precompute(pc_size) {
+    const directoryName = "lookupTables";
+    // Check if the lookupTables directory exists
+    if (!fs.existsSync(directoryName)) {
+      // If it doesn't exist, create it
+      fs.mkdirSync(directoryName);
+      console.log(`Directory "${directoryName}" created.`);
+    }
+    const babyjub = await buildBabyjub();
+    const Fr = babyjub.F;
     const range = 32 - pc_size; 
     const end = BigInt(2)**BigInt(pc_size);
     
@@ -30,9 +36,9 @@ function precompute(pc_size) {
     bar.start(Number(end), 0);
 
     for (let xhi = BigInt(0); xhi < end; xhi++) {
-    
-        key = base.multiplyUnsafe(xhi *BigInt(2)**BigInt(range)).toAffine().x.toString(16);
-        lookup[key] = xhi.toString(16);
+        key = babyjub.mulPointEscalar(babyjub.Base8, xhi *BigInt(2)**BigInt(range))[0];
+        // key = base.multiplyUnsafe(xhi *BigInt(2)**BigInt(range)).toAffine().x.toString(16);
+        lookup[Fr.toString(key)] = xhi.toString(16);
         bar.update(Number(xhi) + 1);
     }
     bar.stop();
