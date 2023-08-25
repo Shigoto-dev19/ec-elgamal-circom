@@ -13,7 +13,7 @@ The encoding algorithm used for the ElGamal Scheme is simply multiplying a scala
 
 Decoding by breaking the discrete log, means retaining all the awesome Finite Field properties when dealing with elliptic curve point. That means addition, scalar multiplication remain valid even after decoding.
 
-Directly decoding a point that is known to be multiplied to a 64-bit is not efficient even having modern hardware, the simple solution to this problem is to split this number to two 32-bit numbers $xlo$ and $xhi$ such that $input = xlo + 2^32 xhi$. 
+Directly decoding a point that is known to be multiplied to a 64-bit is not efficient even having modern hardware, the simple solution to this problem is to split this number to two 32-bit numbers $xlo$ and $xhi$ such that $input = xlo + 2^{32} xhi$. 
 
 Knowing that ElGamal Scheme is additively homorphic it is easy to merge two 32-bit encrypted inputs the same applied with xlo and xhi.
 

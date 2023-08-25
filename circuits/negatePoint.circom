@@ -7,6 +7,11 @@ template Negate() {
     signal input p[2];
     signal output out[2];
 
+    // check that the point is a point on curve
+    component isOnCurve = BabyCheck();
+    isOnCurve.x <== p[0];
+    isOnCurve.y <== p[1];
+
     out[0] <== - p[0];
     out[1] <== p[1];
 }
@@ -29,7 +34,6 @@ template AddNegate() {
 
     out[0] <== add.xout;
     out[1] <== add.yout;
-
 }
 
 template TestNegate() {
@@ -49,13 +53,3 @@ template TestNegate() {
     out[0] <== add.xout;
     out[1] <== add.yout;  
 }
-
-// component main = AddNegate();
-
-/* INPUT = {
-
-    "p1": ["10614836967206073115878571854411621055830680546950380174399474835952985998040",
-           "19865291015589380477843586142835973985345448807857804777447947442362310430937"],
-    "p2": ["10614836967206073115878571854411621055830680546950380174399474835952985998040",
-           "19865291015589380477843586142835973985345448807857804777447947442362310430937"]
-} */

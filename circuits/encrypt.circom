@@ -26,12 +26,13 @@ template Encrypt() {
 
     component isOnCurve[2];
 
-    isOnCurve[0] = BabyCheck();             // check the public key is point on curve
+    // check the public key is point on curve
+    isOnCurve[0] = BabyCheck();             
     isOnCurve[0].x <== pk[0];
     isOnCurve[0].y <== pk[1];
  
-    
-    isOnCurve[1] = BabyCheck();             // check the Message is a point on curve
+    // check the Message is a point on curve
+    isOnCurve[1] = BabyCheck();             
     isOnCurve[1].x <== M[0];
     isOnCurve[1].y <== M[1];
     
