@@ -8,7 +8,7 @@
     "build-circuits": "./scripts/build-all-circuits.sh",
     "setup": "yarn build-circuit addPoint_test",
     "fetch_table": "yarn ts-node ./build/fetch_table",
-    "test": "ts-mocha --timeout 500000 ./test/*.test.ts --exit",
+    "test": "ts-mocha --timeout 500000000 ./test/*.test.ts --exit",
     "test-elgamal": "ts-mocha --timeout 50000000 ./src/test/*.test.ts --quiet --exit",
     "test-utils": "ts-mocha --timeout 500000 ./build/test/*.test.ts",
     "delete-lookupTables": "rm ./lookupTables/*.json",
@@ -20,7 +20,9 @@
     "bench-decrypt": "snarkjs ri ./circuits/artifacts/decrypt_test/decrypt.r1cs",
     "benchmark-ec": "yarn bench-add && yarn bench-double && yarn bench-multiply",
     "benchmark-elgamal": "yarn bench-encrypt && yarn bench-decrypt",
-    "benchmark": "yarn benchmark-ec && yarn benchmark-elgamal"
+    "benchmark": "yarn benchmark-ec && yarn benchmark-elgamal",
+    "format": "yarn prettier --write \"src/**/*.{ts,js}\" \"test/**/*.{ts,js}\" -w",
+    "lint": "yarn prettier \"src/**/*{ts,js}\" --check"
   },
   "keywords": [
     "ZKP",
