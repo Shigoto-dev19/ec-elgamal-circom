@@ -2,4 +2,4 @@ pragma circom 2.1.2;
 
 include "../encrypt.circom";
 
-component main { public [ pk ] } = Encrypt();
+component main { public [ publicKey ] } = Encrypt();

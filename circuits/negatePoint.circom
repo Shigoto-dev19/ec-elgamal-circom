@@ -7,7 +7,7 @@ template Negate() {
     signal input p[2];
     signal output out[2];
 
-    // check that the point is a point on curve
+    // assert that the point is a point on curve
     component isOnCurve = BabyCheck();
     isOnCurve.x <== p[0];
     isOnCurve.y <== p[1];
