@@ -89,6 +89,21 @@ export async function encrypt_s(message, public_key, nonce?) {
     return { ephemeral_key, encrypted_message };
 }
 
+async function run() {
+    const babyjub = await buildBabyjub();
+    const F = babyjub.F;
+
+    const point = await getRandomPoint();
+    console.log("random point: ", point.map(x => F.toString(x)));
+    const packed_point = babyjub.packPoint(point);
+    console.log('packed point: ', F.toString(packed_point));
+    const unpacked_point = babyjub.unpackPoint(packed_point);
+    console.log("unpacked point: ", unpacked_point.map(x => F.toString(x)));
+}
+
+// run().then(res => {
+//     res
+// })
 // genKeypair().then((keypair) => {
 //     // receiver's public key
 //     const private_key = keypair.private_key;

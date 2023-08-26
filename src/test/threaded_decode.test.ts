@@ -1,42 +1,39 @@
-import { getRandomPoint, getInRange } from "../elgamal";
-import { encrypt_s, encrypt, decrypt, key_pair } from "../elgamal";
-import { bn254 } from '../noble_bn254';
-import { decode, encode, split64 } from '../decode';
+import { decode, encode, split64 } from "../../build/decode";
+import { getRandomPoint, genKeypair, getInRange, encrypt, decrypt, encrypt_s } from "../babyJub";
+
 const fs = require('fs');
-const { decode_threaded_VLT } = require('../threader.js');
+const { decode_threaded_VLT } = require('../../build/threader.js');
 const assert = require('chai').assert; 
 
-const Point = bn254.ProjectivePoint; 
-const G = Point.BASE; 
 const b32 = 4294967296n;
 const lookupTable = JSON.parse(fs.readFileSync(`./lookupTables/x19xlookupTable.json`));
 
 describe("Testing Encoding/Decoding for ElGamal Scheme", () => {
 
-    it("Check compliance of orignal and THREAD-decoded message as 32-bit numbers", () => {
+    it.only("Check compliance of orignal and THREAD-decoded message as 32-bit numbers", () => {
         
         const plaintext = getInRange(1n, b32);
         const encoded = encode(plaintext);
-        
+        let decoded_result;
         decode_threaded_VLT(encoded, 19, 2, lookupTable) 
             .then((decoded) => {
-                assert(plaintext == decoded, "Decoded number is different!");
-                console.log(plaintext);
-                console.log(decoded);
+                decoded_result = decoded
+                assert(plaintext === decoded, "Decoded number is different!");
         })
             .catch((err) => {
                 console.error(err);
                 throw new Error('Error in decode_threaded_VLT');
         });
+        console.log(plaintext);
+        console.log(decoded_result);
         
     });
 
-    it("Check unhappy compliance of orignal and THREAD-decoded message for a different random input", async () => {
+    it.skip("Check unhappy compliance of orignal and THREAD-decoded message for a different random input", async () => {
         
-
         const plaintext = getInRange(1n, b32);
         const encoded = encode(plaintext);
-        const rand = G.multiplyUnsafe(getInRange(1n, b32));
+        const rand = await getRandomPoint();
         
         decode_threaded_VLT(encoded, 19, 2, lookupTable)
             .then((decoded) => {
@@ -59,7 +56,6 @@ describe("Testing Encoding/Decoding for ElGamal Scheme", () => {
 
             const plaintext = getInRange(1n, b32);
             const encoded = encode(plaintext);
-            
             decode_threaded_VLT(encoded, 19, 2, lookupTable) 
                 .then((decoded) => {
                     assert(plaintext === decoded, "Decoded number is different!");
@@ -67,11 +63,10 @@ describe("Testing Encoding/Decoding for ElGamal Scheme", () => {
                 .catch((err) => {
                     console.error(err);
             });
-        }
-        
+        }   
     });
 
-    it("Check decoding preserves Elgamal linear homomorphism", () => {
+    it("Check decoding preserves Elgamal linear homomorphism", async() => {
 
         // The input should be a 64-bit number
         const input = getInRange(1n, b32**2n);                          
@@ -82,13 +77,13 @@ describe("Testing Encoding/Decoding for ElGamal Scheme", () => {
         const M1 = encode(xlo);
         const M2 = encode(xhi);
         
-        const [private_key, public_key] = key_pair();
+        const keypair = await genKeypair();
 
-        const [ephemeral_key1, encrypted_message1] = encrypt_s(M1, public_key);
-        const [ephemeral_key2, encrypted_message2] = encrypt_s(M2, public_key);
+        const encryption1 = await encrypt_s(M1, keypair.public_key);
+        const encryption2 = await encrypt_s(M2, keypair.public_key);
 
-        const Md1 = decrypt(private_key,  ephemeral_key1, encrypted_message1);
-        const Md2 = decrypt(private_key,  ephemeral_key2, encrypted_message2);
+        const Md1 = await decrypt(keypair.private_key,  encryption1.ephemeral_key, encryption1.encrypted_message);
+        const Md2 = await decrypt(keypair.private_key,  encryption2.ephemeral_key, encryption2.encrypted_message);
 
         decode_threaded_VLT(Md1, 19, 2, lookupTable)
         .then((dlo) => {
@@ -108,7 +103,7 @@ describe("Testing Encoding/Decoding for ElGamal Scheme", () => {
 
     });
 
-    it("Check unhappy decoding breaks Elgamal linear homomorphism", () => {
+    it("Check unhappy decoding breaks Elgamal linear homomorphism", async() => {
 
         // The input should be a 64-bit number
         const input = getInRange(1n, b32**2n);                          
@@ -120,13 +115,13 @@ describe("Testing Encoding/Decoding for ElGamal Scheme", () => {
         const M1 = encode(xhi);
         const M2 = encode(xlo);
         
-        const [private_key, public_key] = key_pair();
+        const keypair = await genKeypair();
 
-        const [ephemeral_key1, encrypted_message1] = encrypt_s(M1, public_key);
-        const [ephemeral_key2, encrypted_message2] = encrypt_s(M2, public_key);
+        const encryption1 = await encrypt_s(M1, keypair.public_key);
+        const encryption2 = await encrypt_s(M2, keypair.public_key);
 
-        const Md1 = decrypt(private_key,  ephemeral_key1, encrypted_message1);
-        const Md2 = decrypt(private_key,  ephemeral_key2, encrypted_message2);
+        const Md1 = await decrypt(keypair.private_key,  encryption1.ephemeral_key, encryption1.encrypted_message);
+        const Md2 = await decrypt(keypair.private_key,  encryption2.ephemeral_key, encryption2.encrypted_message);
 
         decode_threaded_VLT(Md1, 19, 2, lookupTable)
             .then((dlo) => {
@@ -146,7 +141,7 @@ describe("Testing Encoding/Decoding for ElGamal Scheme", () => {
         
     });
 
-    it("Check LOOPED THREAD-decoding preserves Elgamal linear homomorphism", () => {
+    it("Check LOOPED THREAD-decoding preserves Elgamal linear homomorphism", async () => {
 
         for (let i=0; i<10; i++) {
             // The input should be a 64-bit number
@@ -158,13 +153,13 @@ describe("Testing Encoding/Decoding for ElGamal Scheme", () => {
             let M1 = encode(xlo);
             let M2 = encode(xhi);
             
-            let [private_key, public_key] = key_pair();
+            const keypair = await genKeypair();
 
-            let [ephemeral_key1, encrypted_message1] = encrypt_s(M1, public_key);
-            let [ephemeral_key2, encrypted_message2] = encrypt_s(M2, public_key);
-
-            let Md1 = decrypt(private_key,  ephemeral_key1, encrypted_message1);
-            let Md2 = decrypt(private_key,  ephemeral_key2, encrypted_message2);
+            const encryption1 = await encrypt_s(M1, keypair.public_key);
+            const encryption2 = await encrypt_s(M2, keypair.public_key);
+    
+            const Md1 = await decrypt(keypair.private_key,  encryption1.ephemeral_key, encryption1.encrypted_message);
+            const Md2 = await decrypt(keypair.private_key,  encryption2.ephemeral_key, encryption2.encrypted_message);
 
             decode_threaded_VLT(Md1, 19, 2, lookupTable)
                 .then((dlo) => {

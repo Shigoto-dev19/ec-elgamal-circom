@@ -31,7 +31,7 @@ async function decode(C, pc : number) : Promise<bigint> {
         let loBase = babyjub.mulPointEscalar(babyjub.Base8, xlo);
         loBase[0] = Fr.neg(loBase[0]);
         let key = babyjub.addPoint(loBase, C);
-        key = Fr.toString(key[0])
+        key = Fr.toString(key[0]);
         // let key = C.subtract(base.multiplyUnsafe(xlo)).toAffine().x.toString(16);  
         
         if (lookupTable.hasOwnProperty(key)) {
