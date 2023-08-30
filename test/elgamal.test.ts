@@ -3,7 +3,7 @@ const fs = require("fs");
 const expect = require("chai").expect;
 const buildBabyjub = require("circomlibjs").buildBabyjub;
 
-import { genKeypair, getInRange, encrypt, decrypt } from "../src/babyJub";
+import { genKeypair, getInRange, encrypt, decrypt } from "../src";
 
 const wasm_path_encrypt = "./circuits/artifacts/encrypt_test/encrypt.wasm";
 const zkey_path_encrypt = "./circuits/artifacts/encrypt_test/encrypt.zkey";

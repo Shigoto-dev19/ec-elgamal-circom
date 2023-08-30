@@ -1,4 +1,4 @@
-import { getRandomPoint, getInRange } from "../src/babyJub";
+import { getRandomPoint, getInRange } from "../src";
 
 const snarkjs = require("snarkjs");
 const fs = require("fs");

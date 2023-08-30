@@ -6,10 +6,8 @@
   "scripts": {
     "ptau": "./scripts/ptau.sh",
     "build-circuits": "./scripts/build-all-circuits.sh",
-    "fetch_table": "yarn ts-node ./build/fetch_table",
     "test": "ts-mocha --timeout 500000000 ./test/*.test.ts --exit",
     "test-elgamal": "ts-mocha --timeout 50000000 ./src/test/*.test.ts --quiet --exit",
-    "test-utils": "ts-mocha --timeout 500000 ./build/test/*.test.ts",
     "delete-lookupTables": "rm ./lookupTables/*.json",
     "precompute-lookupTable": "yarn ts-node ./build/precompute.ts",
     "bench-negate": "snarkjs ri ./circuits/artifacts/negatePoint_test/negatePoint.r1cs",

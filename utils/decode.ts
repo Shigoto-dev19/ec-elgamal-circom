@@ -1,7 +1,10 @@
 const buildBabyjub = require("circomlibjs").buildBabyjub;
-import { fetch_table } from './fetch_table';
-
 export {decode, encode, split64};
+const fs = require("fs");
+
+function fetch_table(pc) {
+    return JSON.parse(fs.readFileSync(`./lookupTables/x${pc}xlookupTable.json`));
+}
 
 let lookupTable;
 

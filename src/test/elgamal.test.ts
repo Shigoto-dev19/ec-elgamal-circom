@@ -1,7 +1,7 @@
 const buildBabyjub = require("circomlibjs").buildBabyjub;
-import { decode, encode, split64 } from "../../build/decode";
+import { decode, encode, split64 } from "../../utils/decode";
 import { assert, expect } from "chai";
-import { getRandomPoint, genKeypair, getInRange, encrypt, decrypt, encrypt_s } from "../babyJub";
+import { getRandomPoint, genKeypair, getInRange, encrypt, decrypt, encrypt_s } from "..";
 
 const b32 = 4294967296n;
 
