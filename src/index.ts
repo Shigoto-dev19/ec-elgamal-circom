@@ -1,130 +1,171 @@
-const crypto = require("crypto");
-const buildBabyjub = require("circomlibjs").buildBabyjub;
+import { AffinePoint } from "@noble/curves/abstract/curve";
+import { babyJub as CURVE} from "../utils/babyjub-noble";
+import { prv2pub, bigInt2Buffer, formatPrivKeyForBabyJub } from "../utils/tools";
+import * as assert from 'assert'
+import * as crypto from 'crypto'
+import { ExtPointType } from "@noble/curves/abstract/edwards";
 
-export function getInRange(min: bigint, max: bigint): bigint {
-    function uint8ArrayToBigInt(uint8Array: Uint8Array): bigint {
-        let stringValue = "";
-        for (let i = 0; i < uint8Array.length; i++) {
-            stringValue += uint8Array[i].toString(16);
+type SnarkBigInt = bigint;
+type PrivKey = bigint;
+type PubKey = ExtPointType;
+type BabyJubPoint = AffinePoint<bigint>;
+
+/**
+ * A private key and a public key
+ */
+interface Keypair {
+    privKey: PrivKey;
+    pubKey: PubKey;
+}
+
+interface ElGamalCiphertext {
+    ephemeralKey: BabyJubPoint;
+    encryptedMessage: BabyJubPoint;
+
+}
+
+// The BN254 group order p
+const SNARK_FIELD_SIZE: SnarkBigInt = BigInt(
+    '21888242871839275222246405745257275088548364400416034343698204186575808495617'
+)
+// Textbook Elgamal Encryption Scheme over Baby Jubjub curve without message encoding 
+const babyJub = CURVE.ExtendedPoint;
+babyJub.BASE
+
+/** 
+ * Returns a BabyJub-compatible random value. We create it by first generating
+ * a random value (initially 256 bits large) modulo the snark field size as
+ * described in EIP197. This results in a key size of roughly 253 bits and no
+ * more than 254 bits. To prevent modulo bias, we then use this efficient
+ * algorithm:
+ * http://cvsweb.openbsd.org/cgi-bin/cvsweb/~checkout~/src/lib/libc/crypt/arc4random_uniform.c
+ * @return A BabyJub-compatible random value.
+ * @see {@link https://github.com/privacy-scaling-explorations/maci/blob/master/crypto/ts/index.ts}
+ */
+const genRandomBabyJubValue = (): bigint => {
+
+    // Prevent modulo bias
+    //const lim = BigInt('0x10000000000000000000000000000000000000000000000000000000000000000')
+    //const min = (lim - SNARK_FIELD_SIZE) % SNARK_FIELD_SIZE
+    const min = BigInt('6350874878119819312338956282401532410528162663560392320966563075034087161851')
+
+    let rand
+    while (true) {
+        rand = BigInt('0x' + crypto.randomBytes(32).toString('hex'))
+
+        if (rand >= min) {
+            break
         }
-        return BigInt("0x" + stringValue);
     }
 
-    // calculate the range of the interval subtracting _1n to exclude the maximum
-    const range = max - min - BigInt(1);
-    // calculate the number of random bytes in the range
-    const bytes_num = Math.floor((range.toString(2).length - 1) / 8);
-    let bi = undefined;
+    const privKey: PrivKey = rand % SNARK_FIELD_SIZE
+    assert(privKey < SNARK_FIELD_SIZE)
 
-    do {
-        // generate random bytes according to the number of bytes in range
-        const buffer = crypto.randomBytes(bytes_num);
-        // convert the random bytes to bigint and add the min
-        bi = uint8ArrayToBigInt(buffer) + min;
-        // repeat till the number obtained is less than max (the desired range)
-    } while (bi >= max);
-
-    return bi;
+    return privKey
 }
 
-export async function getRandomPoint() {
-    const babyjub = await buildBabyjub();
-    const coeff = getInRange(1n, babyjub.order);
-    return babyjub.mulPointEscalar(babyjub.Base8, coeff);
+/**
+ * @return A BabyJub-compatible private key.
+ */
+const genPrivKey = (): PrivKey => {
+
+    return genRandomBabyJubValue()
 }
 
-// generate private and public key for the receiver
-export async function genKeypair() {
-    const babyjub = await buildBabyjub();
-    const private_key = getInRange(1n, babyjub.order);
-    const public_key = babyjub.mulPointEscalar(babyjub.Base8, private_key);
-    return { private_key, public_key };
+/*
+ * @return A BabyJub-compatible salt.
+ */
+const genRandomSalt = (): PrivKey => {
+
+    return genRandomBabyJubValue()
 }
-// TODO: test cases for invalid public key
-// The Sender
-export async function encrypt(public_key) {
-    const babyjub = await buildBabyjub();
-    const Fr = babyjub.F;
+
+/**
+ * @param privKey A private key generated using genPrivKey()
+ * @return A public key associated with the private key
+ */
+const genPubKey = (privKey: PrivKey): PubKey => {
+    // Check whether privKey is a field element
+    privKey = BigInt(privKey.toString())
+    assert(privKey < SNARK_FIELD_SIZE)
+    return prv2pub(bigInt2Buffer(privKey))
+}
+
+const genKeypair = (): Keypair => {
+    const privKey = formatPrivKeyForBabyJub(genPrivKey())
+    const pubKey = genPubKey(privKey)
+
+    const Keypair: Keypair = { privKey, pubKey }
+
+    return Keypair
+}
+
+function genRandomPoint(): ExtPointType {
+    const salt = genRandomBabyJubValue()
+    return genPubKey(salt)
+}
+
+/**
+ * Encrypts a plaintext such that only the owner of the specified public key
+ * may decrypt it.
+ * @param pubKey The recepient's public key
+ * @param encodedMessage A plaintext encoded as a BabyJub curve point
+ * @param randomVal A random value y used along with the private key to generate the ciphertext
+ */
+function encrypt(pubKey: PubKey, encodedMessage?: ExtPointType, randomVal?: bigint) {
+    // TODO: test cases for invalid public key
     // encoded message as point on curve
     // The sender chooses the message M as a point on the curve
-    const message = await getRandomPoint();
+    const message = encodedMessage ?? genRandomPoint();
 
     // The sender chooses a secret key as a nonce k
-    const nonce = getInRange(BigInt(1), babyjub.order);
+    const nonce = randomVal ?? formatPrivKeyForBabyJub(genRandomSalt());
 
     // The sender calculates an ephemeral key (nonce) Ke
-    const ephemeral_key = babyjub.mulPointEscalar(babyjub.Base8, nonce);
-    let encrypted_message = [Fr.e("0"), Fr.e("1")];
+    const ephemeral_key = babyJub.BASE.multiply(nonce);
+    const masking_key = pubKey.multiply(nonce);
+    let encrypted_message: ExtPointType;
     // The sender encrypts the message Km
-    if (babyjub.inCurve(public_key) && public_key[0] !== Fr.e("0") && public_key[1] !== Fr.e("1")) {
-        encrypted_message = babyjub.mulPointEscalar(public_key, nonce);
-        encrypted_message = babyjub.addPoint(encrypted_message, message);
+    if (pubKey.assertValidity && !pubKey.equals(babyJub.ZERO)) {
+        encrypted_message = message.add(masking_key);
     } else throw new Error("Invalid Public Key!");
 
-    return { message, ephemeral_key, encrypted_message, nonce, Fr };
+    return { message, ephemeral_key, encrypted_message, nonce };
 }
 
-// ---> Sender sends the ephemeral key Ke and the encrypted message Km to the receiver
-export async function decrypt(private_key, ephemeral_key, encrypted_message) {
-    const babyjub = await buildBabyjub();
-    const Fr = babyjub.F;
+/**
+ * Decrypts a ciphertext using a private key.
+ * @param privKey The private key
+ * @param ciphertext The ciphertext to decrypt
+ */
+function decrypt(privKey: PrivKey, ephemeral_key: ExtPointType, encrypted_message: ExtPointType): ExtPointType {
 
-    let dKe = babyjub.mulPointEscalar(ephemeral_key, private_key);
-    dKe[0] = Fr.neg(dKe[0]);
-    // The receiver decrypts the message Km - [d].Ke
-    const decrypted_message = babyjub.addPoint(encrypted_message, dKe);
+    // The receiver decrypts the message => encryptedMessage - [privKey].ephemeralKey
+    const masking_key = ephemeral_key.multiply(formatPrivKeyForBabyJub(privKey));
+    const decrypted_message = encrypted_message.add(masking_key.negate());
 
     return decrypted_message;
 }
 
 // ElGamal Scheme with specified inputs for testing purposes
-export async function encrypt_s(message, public_key, nonce?) {
-    const babyjub = await buildBabyjub();
-    nonce = nonce ?? getInRange(1n, babyjub.order);
-    const Fr = babyjub.F;
-    const ephemeral_key = babyjub.mulPointEscalar(babyjub.Base8, nonce);
-    let encrypted_message = babyjub.mulPointEscalar(public_key, nonce);
-    encrypted_message = babyjub.addPoint(encrypted_message, message);
+function encrypt_s(message: ExtPointType, public_key: PubKey, nonce?: bigint) {
+    nonce = nonce ?? genRandomSalt();
+
+    const ephemeral_key = babyJub.BASE.multiply(nonce);
+    const masking_key = public_key.multiply(nonce);
+    const encrypted_message = masking_key.add(message);
 
     return { ephemeral_key, encrypted_message };
 }
 
-async function run() {
-    const babyjub = await buildBabyjub();
-    const F = babyjub.F;
-
-    const point = await getRandomPoint();
-    console.log("random point: ", point.map(x => F.toString(x)));
-    const packed_point = babyjub.packPoint(point);
-    console.log('packed point: ', F.toString(packed_point));
-    const unpacked_point = babyjub.unpackPoint(packed_point);
-    console.log("unpacked point: ", unpacked_point.map(x => F.toString(x)));
+export {
+    genRandomBabyJubValue,
+    genRandomPoint,
+    genRandomSalt,
+    genPrivKey,
+    genPubKey,
+    genKeypair,
+    encrypt,
+    encrypt_s,
+    decrypt,
 }
-
-// run().then(res => {
-//     res
-// })
-// genKeypair().then((keypair) => {
-//     // receiver's public key
-//     const private_key = keypair.private_key;
-//     console.log('receiver private key: ', private_key);
-//     const public_key = keypair.public_key;
-
-//     encrypt(public_key).then(output => {
-//         getRandomPoint().then((result) => {
-//             console.log('random jubjub point: ', result.map(x => output.Fr.toString(x)))
-//         })
-//         console.log('receiver public key: ', public_key.map(x => output.Fr.toString(x)));
-//         console.log('sender ephemeral key: ', output.ephemeral_key.map(x => output.Fr.toString(x)));
-//         console.log('sender message: ', output.message.map(x => output.Fr.toString(x)));
-//         console.log('sender nonce: ', output.nonce);
-//         console.log('sender encrypted message: ', output.encrypted_message.map(x => output.Fr.toString(x)));
-//         decrypt(private_key, output.ephemeral_key, output.encrypted_message).then(decrypted_message => {
-//             const message = output.message.map(x => output.Fr.toString(x));
-//             console.log('plain message before encryption: ', message);
-//             const decrypted = decrypted_message.map(x => output.Fr.toString(x));
-//             console.log('message after decryption: ', decrypted);
-//             console.log("compliant message: ", message[0] == decrypted[0] && message[1] == decrypted[1])
-//         })
-//     })
-// })
