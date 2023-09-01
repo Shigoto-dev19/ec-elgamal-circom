@@ -1,22 +1,15 @@
-import { getRandomPoint, getInRange } from "../src";
+import { genRandomPoint, genRandomSalt } from "../src";
+import { toStringArray } from "../utils/tools";
 
 const snarkjs = require("snarkjs");
 const fs = require("fs");
 const expect = require("chai").expect;
-const buildBabyjub = require("circomlibjs").buildBabyjub;
 
 const IDENTITY_POINT = ["0", "1"];
 let wasm_path = "./circuits/artifacts/negatePoint_test/negatePoint.wasm";
 let zkey_path = "./circuits/artifacts/negatePoint_test/negatePoint.zkey";
 
 describe("Negate Point Circuit Tests", () => {
-    let babyJub;
-    let Fr;
-
-    before(async () => {
-        babyJub = await buildBabyjub();
-        Fr = babyJub.F;
-    });
 
     it("Verify negatePoint circuit", async () => {
         const input = {
@@ -47,7 +40,7 @@ describe("Negate Point Circuit Tests", () => {
             ],
         };
 
-        const { proof, publicSignals } = await snarkjs.groth16.fullProve(
+        const { publicSignals } = await snarkjs.groth16.fullProve(
             input,
             wasm_path,
             zkey_path,
@@ -72,7 +65,7 @@ describe("Negate Point Circuit Tests", () => {
     it("Verify negating the IDENTITY point returns the IDENTITY point", async () => {
         const input = { p: ["0", "1"] };
 
-        const { proof, publicSignals } = await snarkjs.groth16.fullProve(
+        const { publicSignals } = await snarkjs.groth16.fullProve(
             input,
             wasm_path,
             zkey_path,
@@ -81,9 +74,9 @@ describe("Negate Point Circuit Tests", () => {
     });
 
     it("Verify negating a random point returns the IDENTITY point", async () => {
-        const point = await getRandomPoint();
-        const input = { p: [...point.map((x) => Fr.toObject(x))] };
-        const { proof, publicSignals } = await snarkjs.groth16.fullProve(
+        const point = toStringArray(genRandomPoint());
+        const input = { p: point };
+        const { publicSignals } = await snarkjs.groth16.fullProve(
             input,
             wasm_path,
             zkey_path,
@@ -94,9 +87,9 @@ describe("Negate Point Circuit Tests", () => {
 
     it("Verify looped random point negation returns always identity", async () => {
         for (let i = 0; i < 10; i++) {
-            const point = await getRandomPoint();
-            const input = { p: [...point.map((x) => Fr.toObject(x))] };
-            const { proof, publicSignals } = await snarkjs.groth16.fullProve(
+            const point = toStringArray(genRandomPoint());
+            const input = { p: point };
+            const { publicSignals } = await snarkjs.groth16.fullProve(
                 input,
                 wasm_path,
                 zkey_path,

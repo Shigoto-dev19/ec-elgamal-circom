@@ -6,10 +6,10 @@ const unstringifyBigInts: (obj: object) => any = ff.utils.unstringifyBigInts
 
 import { Scalar } from "ffjavascript";
 import { babyJub as CURVE} from "./babyjub-noble";
-import { ExtPointType } from "@noble/curves/abstract/edwards";
-
+import { BabyJubAffinePoint, BabyJubExtPoint } from "../src";
 const babyJub = CURVE.ExtendedPoint;
 
+// Taken from https://github.com/iden3/circomlibjs/blob/main/src/eddsa.js
 function pruneBuffer(buff) {
     buff[0] = buff[0] & 0xF8;
     buff[31] = buff[31] & 0x7F;
@@ -17,19 +17,20 @@ function pruneBuffer(buff) {
     return buff;
 }
 
+// Taken from https://github.com/iden3/circomlibjs/blob/main/src/eddsa.js
 function prv2pub(prv) {
     const sBuff = pruneBuffer(createBlakeHash("blake512").update(Buffer.from(prv)).digest());
     let s = Scalar.fromRprLE(sBuff, 0, 32);
-    const A = babyJub.BASE.multiply(Scalar.shr(s,3));
+    const A = babyJub.BASE.multiply(BigInt(Scalar.shr(s,3)));
     return A;
 }
 
-/*
+/**
  * An internal function which formats a random private key to be compatible
  * with the BabyJub curve. This is the format which should be passed into the
  * PubKey and other circuits.
  */
-const formatPrivKeyForBabyJub = (privKey: bigint) => {
+function formatPrivKeyForBabyJub(privKey: bigint) {
     const sBuff = pruneBuffer(
         createBlakeHash("blake512").update(
             bigInt2Buffer(privKey),
@@ -39,25 +40,43 @@ const formatPrivKeyForBabyJub = (privKey: bigint) => {
     return ff.Scalar.shr(s, 3)
 }
 
-/*
+/**
  * Convert a BigInt to a Buffer
  */
 const bigInt2Buffer = (i: BigInt): Buffer => {
     return Buffer.from(i.toString(16), 'hex')
 }
 
-function toBigIntArray(point: ExtPointType): Array<bigint> {
+/**
+ * Convert an EC extended point into an array of two bigints
+ */
+function toBigIntArray(point: BabyJubExtPoint): Array<bigint> {
     const point_affine = point.toAffine();
     const x = point_affine.x;
     const y = point_affine.y;
     return [x, y]
 }
 
-function toStringArray(point: ExtPointType): Array<string> {
+/**
+ * Convert an EC extended point into an array of two strings
+ */
+function toStringArray(point: BabyJubExtPoint): Array<string> {
     const point_affine = point.toAffine();
     const x = point_affine.x.toString();
     const y = point_affine.y.toString();
     return [x, y]
+}
+
+/**
+ * Convert two strings x and y into an EC extended point
+ */
+function coordinatesToExtPoint(x: string, y: string): BabyJubExtPoint {
+    const x_bigint = BigInt(x);
+    const y_bigint = BigInt(y);
+    const affine_point: BabyJubAffinePoint = { x: x_bigint, y: y_bigint };
+
+    return babyJub.fromAffine(affine_point)
+    
 }
 
 /**
@@ -95,4 +114,5 @@ export {
     toStringArray,
     toBigIntArray,
     formatPrivKeyForBabyJub,
+    coordinatesToExtPoint,
 }

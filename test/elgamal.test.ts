@@ -1,9 +1,9 @@
 const snarkjs = require("snarkjs");
 const fs = require("fs");
 const expect = require("chai").expect;
-const buildBabyjub = require("circomlibjs").buildBabyjub;
 
-import { genKeypair, getInRange, encrypt, decrypt } from "../src";
+import { genKeypair, genRandomSalt, encrypt, decrypt, genRandomPoint, babyJub, Keypair, BabyJubExtPoint } from "../src";
+import { toStringArray, stringifyBigInts, toBigIntArray, formatPrivKeyForBabyJub, coordinatesToExtPoint } from "../utils/tools";
 
 const wasm_path_encrypt = "./circuits/artifacts/encrypt_test/encrypt.wasm";
 const zkey_path_encrypt = "./circuits/artifacts/encrypt_test/encrypt.zkey";
@@ -11,30 +11,39 @@ const zkey_path_encrypt = "./circuits/artifacts/encrypt_test/encrypt.zkey";
 const wasm_path_decrypt = "./circuits/artifacts/decrypt_test/decrypt.wasm";
 const zkey_path_decrypt = "./circuits/artifacts/decrypt_test/decrypt.zkey";
 
+const genCircuitInputs = (keypair: Keypair, encodedMessage?: BabyJubExtPoint) => {
+    const encryption = encrypt(keypair.pubKey, encodedMessage);
+    // const encrypted_message = toStringArray(encryption.encrypted_message);
+
+    let input_encrypt = stringifyBigInts({
+        message: toBigIntArray(encryption.message),
+        nonceKey: encryption.nonce,
+        publicKey: toBigIntArray(keypair.pubKey),
+    });
+    
+    const ephemeral_key = toStringArray(encryption.ephemeral_key); 
+    const encrypted_message = toStringArray(encryption.encrypted_message);
+    return { input_encrypt, ephemeral_key, encrypted_message }
+}
+
 describe("Testing ElGamal Scheme Circuits\n", () => {
     context("Testing Encrypt Circuit", () => {
-        let babyJub;
-        let Fr;
-        let input;
+        let input_encrypt;
         let keypair;
-        let encryption;
+        let ephemeral_key;
+        let encrypted_message;
 
-        before(async () => {
-            babyJub = await buildBabyjub();
-            Fr = babyJub.F;
-
-            keypair = await genKeypair();
-            encryption = await encrypt(keypair.public_key);
-            input = {
-                message: encryption.message.map((x) => Fr.toString(x)),
-                nonceKey: encryption.nonce.toString(),
-                publicKey: keypair.public_key.map((x) => Fr.toString(x)),
-            };
+        before( () => {
+            keypair = genKeypair();
+            const object = genCircuitInputs(keypair);
+            input_encrypt = object.input_encrypt;
+            ephemeral_key = object.ephemeral_key;
+            encrypted_message = object.encrypted_message;
         });
 
         it("Verify Encrypt circuit", async () => {
             const { proof, publicSignals } = await snarkjs.groth16.fullProve(
-                input,
+                input_encrypt,
                 wasm_path_encrypt,
                 zkey_path_encrypt,
             );
@@ -47,97 +56,84 @@ describe("Testing ElGamal Scheme Circuits\n", () => {
         });
 
         it("Verify compliant encrypt output", async () => {
-            const { proof, publicSignals } = await snarkjs.groth16.fullProve(
-                input,
+            const { publicSignals } = await snarkjs.groth16.fullProve(
+                input_encrypt,
                 wasm_path_encrypt,
                 zkey_path_encrypt,
             );
             // Verify compliant encryption output for the ephemeral key
-            expect(publicSignals[0]).to.equals(Fr.toString(encryption.ephemeral_key[0]));
-            expect(publicSignals[1]).to.equals(Fr.toString(encryption.ephemeral_key[1]));
+            expect(publicSignals[0]).to.equals(ephemeral_key[0]);
+            expect(publicSignals[1]).to.equals(ephemeral_key[1]);
             // Verify compliant encryption output for the encrypted message
-            expect(publicSignals[2]).to.equals(Fr.toString(encryption.encrypted_message[0]));
-            expect(publicSignals[3]).to.equals(Fr.toString(encryption.encrypted_message[1]));
-            // Verify compliant encryption input for public key
-            expect(publicSignals[4]).to.equals(input.publicKey[0]);
-            expect(publicSignals[5]).to.equals(input.publicKey[1]);
+            expect(publicSignals[2]).to.equals(encrypted_message[0]);
+            expect(publicSignals[3]).to.equals(encrypted_message[1]);
         });
 
         it("Verify false encrypt output is invalid", async () => {
-            input.nonceKey = getInRange(1n, babyJub.order).toString();
-            const { proof, publicSignals } = await snarkjs.groth16.fullProve(
-                input,
+            input_encrypt.nonceKey = formatPrivKeyForBabyJub(genRandomSalt());
+            const { publicSignals } = await snarkjs.groth16.fullProve(
+                input_encrypt,
                 wasm_path_encrypt,
                 zkey_path_encrypt,
             );
 
             // Verify compliant encryption output for the ephemeral key
-            expect(publicSignals[0]).to.not.equals(Fr.toString(encryption.ephemeral_key[0]));
-            expect(publicSignals[1]).to.not.equals(Fr.toString(encryption.ephemeral_key[1]));
+            expect(publicSignals[0]).to.not.equals(ephemeral_key[0]);
+            expect(publicSignals[1]).to.not.equals(ephemeral_key[1]);
             // Verify compliant encryption output for the encrypted message
-            expect(publicSignals[2]).to.not.equals(Fr.toString(encryption.encrypted_message[0]));
-            expect(publicSignals[3]).to.not.equals(Fr.toString(encryption.encrypted_message[1]));
-            // Verify compliant encryption input for public key
-            expect(publicSignals[4]).to.equals(input.publicKey[0]);
-            expect(publicSignals[5]).to.equals(input.publicKey[1]);
+            expect(publicSignals[2]).to.not.equals(encrypted_message[0]);
+            expect(publicSignals[3]).to.not.equals(encrypted_message[1]);
         });
 
         it("Looped: Verify compliant encrypt output for random inputs", async () => {
             for (let i = 0; i < 5; i++) {
-                keypair = await genKeypair();
-                encryption = await encrypt(keypair.public_key);
-                input = {
-                    message: encryption.message.map((x) => Fr.toString(x)),
-                    nonceKey: encryption.nonce.toString(),
-                    publicKey: keypair.public_key.map((x) => Fr.toString(x)),
-                };
+                keypair = genKeypair();
+                let { input_encrypt, ephemeral_key, encrypted_message } = genCircuitInputs(keypair);
                 const { proof, publicSignals } = await snarkjs.groth16.fullProve(
-                    input,
+                    input_encrypt,
                     wasm_path_encrypt,
                     zkey_path_encrypt,
                 );
                 // Verify compliant encryption output for the ephemeral key
-                expect(publicSignals[0]).to.equals(Fr.toString(encryption.ephemeral_key[0]));
-                expect(publicSignals[1]).to.equals(Fr.toString(encryption.ephemeral_key[1]));
+                expect(publicSignals[0]).to.equals(ephemeral_key[0]);
+                expect(publicSignals[1]).to.equals(ephemeral_key[1]);
                 // Verify compliant encryption output for the encrypted message
-                expect(publicSignals[2]).to.equals(Fr.toString(encryption.encrypted_message[0]));
-                expect(publicSignals[3]).to.equals(Fr.toString(encryption.encrypted_message[1]));
-                // Verify compliant encryption input for public key
-                expect(publicSignals[4]).to.equals(input.publicKey[0]);
-                expect(publicSignals[5]).to.equals(input.publicKey[1]);
+                expect(publicSignals[2]).to.equals(encrypted_message[0]);
+                expect(publicSignals[3]).to.equals(encrypted_message[1]);
             }
         });
     });
 
     context("Testing Decrypt Circuit", () => {
-        let babyJub;
-        let Fr;
-        let input;
+        let input_encrypt;
+        let input_decrypt;
         let keypair;
-        let encryption;
+        let ephemeral_key;
+        let encrypted_message;
         let decrypted_message;
+        let message;
+        let encodedMessage;
 
-        before(async () => {
-            babyJub = await buildBabyjub();
-            Fr = babyJub.F;
+        before( () => {
+            keypair = genKeypair();
+            encodedMessage = genRandomPoint();
+            message = toStringArray(encodedMessage);
 
-            keypair = await genKeypair();
-            encryption = await encrypt(keypair.public_key);
-            decrypted_message = decrypt(
-                keypair.private_key,
-                encryption.ephemeral_key,
-                encryption.encrypted_message,
-            );
-            input = {
-                encryptedMessage: encryption.encrypted_message.map((x) => Fr.toString(x)),
-                ephemeralKey: encryption.ephemeral_key.map((x) => Fr.toString(x)),
-                privateKey: keypair.private_key.toString(),
+            const encryption = genCircuitInputs(keypair, encodedMessage);
+            input_encrypt = encryption.input_encrypt;
+            ephemeral_key = encryption.ephemeral_key;
+            encrypted_message = encryption.encrypted_message;
+
+            input_decrypt = {
+                encryptedMessage: encrypted_message,
+                ephemeralKey: ephemeral_key,
+                privateKey: formatPrivKeyForBabyJub(keypair.privKey),
             };
         });
 
         it("Verify Decrypt circuit", async () => {
             const { proof, publicSignals } = await snarkjs.groth16.fullProve(
-                input,
+                input_decrypt,
                 wasm_path_decrypt,
                 zkey_path_decrypt,
             );
@@ -150,95 +146,92 @@ describe("Testing ElGamal Scheme Circuits\n", () => {
         });
 
         it("Verify compliant decrypt output", async () => {
-            const { proof, publicSignals } = await snarkjs.groth16.fullProve(
-                input,
+            const { publicSignals } = await snarkjs.groth16.fullProve(
+                input_decrypt,
                 wasm_path_decrypt,
                 zkey_path_decrypt,
             );
 
             // Verify compliant decryption output of the decrypted message
-            expect(publicSignals[0]).to.equals(Fr.toString(encryption.message[0]));
-            expect(publicSignals[1]).to.equals(Fr.toString(encryption.message[1]));
+            expect(publicSignals[0]).to.equals(message[0]);
+            expect(publicSignals[1]).to.equals(message[1]);
 
             // Verify compliant decryption input for the encrypted message
-            expect(publicSignals[2]).to.equals(Fr.toString(encryption.encrypted_message[0]));
-            expect(publicSignals[3]).to.equals(Fr.toString(encryption.encrypted_message[1]));
+            expect(publicSignals[2]).to.equals(encrypted_message[0]);
+            expect(publicSignals[3]).to.equals(encrypted_message[1]);
         });
 
         it("Verify false decrypt output is invalid", async () => {
             // only modify the private key
-            input.privateKey = getInRange(1n, babyJub.order).toString();
-            const { proof, publicSignals } = await snarkjs.groth16.fullProve(
-                input,
+            input_decrypt.privateKey = formatPrivKeyForBabyJub(genRandomSalt());
+            const { publicSignals } = await snarkjs.groth16.fullProve(
+                input_decrypt,
                 wasm_path_decrypt,
                 zkey_path_decrypt,
             );
 
             // Verify compliant decryption output of the decrypted message
-            expect(publicSignals[0]).to.not.equals(Fr.toString(encryption.message[0]));
-            expect(publicSignals[1]).to.not.equals(Fr.toString(encryption.message[1]));
+            expect(publicSignals[0]).to.not.equals(message[0]);
+            expect(publicSignals[1]).to.not.equals(message[1]);
 
             // Verify compliant decryption input for the encrypted message
-            expect(publicSignals[2]).to.equals(Fr.toString(encryption.encrypted_message[0]));
-            expect(publicSignals[3]).to.equals(Fr.toString(encryption.encrypted_message[1]));
+            expect(publicSignals[2]).to.equals(encrypted_message[0]);
+            expect(publicSignals[3]).to.equals(encrypted_message[1]);
         });
 
         it("Looped: Verify compliant decrypt output for random inputs", async () => {
             for (let i = 0; i < 5; i++) {
-                keypair = await genKeypair();
-                encryption = await encrypt(keypair.public_key);
-                decrypted_message = decrypt(
-                    keypair.private_key,
-                    encryption.ephemeral_key,
-                    encryption.encrypted_message,
-                );
-                input = {
-                    encryptedMessage: encryption.encrypted_message.map((x) => Fr.toString(x)),
-                    ephemeralKey: encryption.ephemeral_key.map((x) => Fr.toString(x)),
-                    privateKey: keypair.private_key.toString(),
+                keypair = genKeypair()
+                encodedMessage = genRandomPoint();
+                message = toStringArray(encodedMessage);
+
+                const object = genCircuitInputs(keypair, encodedMessage);
+                input_encrypt = object.input_encrypt;
+                ephemeral_key = object.ephemeral_key;
+                encrypted_message = object.encrypted_message;
+
+                input_decrypt = {
+                    encryptedMessage: encrypted_message,
+                    ephemeralKey: ephemeral_key,
+                    privateKey: formatPrivKeyForBabyJub(keypair.privKey),
                 };
 
                 const { proof, publicSignals } = await snarkjs.groth16.fullProve(
-                    input,
+                    input_decrypt,
                     wasm_path_decrypt,
                     zkey_path_decrypt,
                 );
 
                 // Verify compliant decryption output of the decrypted message
-                expect(publicSignals[0]).to.equals(Fr.toString(encryption.message[0]));
-                expect(publicSignals[1]).to.equals(Fr.toString(encryption.message[1]));
+                expect(publicSignals[0]).to.equals(message[0]);
+                expect(publicSignals[1]).to.equals(message[1]);
 
                 // Verify compliant decryption input for the encrypted message
-                expect(publicSignals[2]).to.equals(Fr.toString(encryption.encrypted_message[0]));
-                expect(publicSignals[3]).to.equals(Fr.toString(encryption.encrypted_message[1]));
+                expect(publicSignals[2]).to.equals(encrypted_message[0]);
+                expect(publicSignals[3]).to.equals(encrypted_message[1]);
             }
         });
     });
 
     context("Testing compliance of Encrypt/Decrypt circuits: circuit to circuit", () => {
-        let babyJub;
-        let Fr;
         let input_encrypt;
+        let input_decrypt;
         let keypair;
-        let encryption;
+        let ephemeral_key;
+        let encrypted_message;
         let decrypted_message;
+        let message;
+        let encodedMessage;
 
-        before(async () => {
-            babyJub = await buildBabyjub();
-            Fr = babyJub.F;
+        before( () => {
+            keypair = genKeypair();
+            encodedMessage = genRandomPoint();
+            message = toStringArray(encodedMessage);
 
-            keypair = await genKeypair();
-            encryption = await encrypt(keypair.public_key);
-            decrypted_message = decrypt(
-                keypair.private_key,
-                encryption.ephemeral_key,
-                encryption.encrypted_message,
-            );
-            input_encrypt = {
-                message: encryption.message.map((x) => Fr.toString(x)),
-                nonceKey: encryption.nonce.toString(),
-                publicKey: keypair.public_key.map((x) => Fr.toString(x)),
-            };
+            let encryption = genCircuitInputs(keypair, encodedMessage);
+            input_encrypt = encryption.input_encrypt;
+            ephemeral_key = encryption.ephemeral_key;
+            encrypted_message = encryption.encrypted_message;
         });
 
         it("Verify the message input is the same as decrypted message", async () => {
@@ -252,7 +245,7 @@ describe("Testing ElGamal Scheme Circuits\n", () => {
             const input_decrypt = {
                 encryptedMessage: [publicSignals_encrypt[2], publicSignals_encrypt[3]],
                 ephemeralKey: [publicSignals_encrypt[0], publicSignals_encrypt[1]],
-                privateKey: keypair.private_key.toString(),
+                privateKey: formatPrivKeyForBabyJub(keypair.privKey),
             };
 
             const prove_decrypt = await snarkjs.groth16.fullProve(
@@ -262,24 +255,20 @@ describe("Testing ElGamal Scheme Circuits\n", () => {
             );
             const publicSignals_decrypt = prove_decrypt.publicSignals;
 
-            expect(publicSignals_decrypt[0]).to.equals(input_encrypt.message[0]);
-            expect(publicSignals_decrypt[1]).to.equals(input_encrypt.message[1]);
+            expect(publicSignals_decrypt[0]).to.equals(message[0]);
+            expect(publicSignals_decrypt[1]).to.equals(message[1]);
         });
 
         it("Looped Verify the circuits given random inputs", async () => {
             for (let i = 0; i < 10; i++) {
-                keypair = await genKeypair();
-                encryption = await encrypt(keypair.public_key);
-                decrypted_message = decrypt(
-                    keypair.private_key,
-                    encryption.ephemeral_key,
-                    encryption.encrypted_message,
-                );
-                input_encrypt = {
-                    message: encryption.message.map((x) => Fr.toString(x)),
-                    nonceKey: encryption.nonce.toString(),
-                    publicKey: keypair.public_key.map((x) => Fr.toString(x)),
-                };
+                message = toStringArray(encodedMessage);
+                keypair = genKeypair();
+
+                const object = genCircuitInputs(keypair, encodedMessage);
+                input_encrypt = object.input_encrypt;
+                ephemeral_key = object.ephemeral_key;
+                encrypted_message = object.encrypted_message;
+                
                 const prove_encrypt = await snarkjs.groth16.fullProve(
                     input_encrypt,
                     wasm_path_encrypt,
@@ -291,7 +280,7 @@ describe("Testing ElGamal Scheme Circuits\n", () => {
                 let input_decrypt = {
                     encryptedMessage: [publicSignals_encrypt[2], publicSignals_encrypt[3]],
                     ephemeralKey: [publicSignals_encrypt[0], publicSignals_encrypt[1]],
-                    privateKey: keypair.private_key.toString(),
+                    privateKey: formatPrivKeyForBabyJub(keypair.privKey),
                 };
 
                 const prove_decrypt = await snarkjs.groth16.fullProve(
@@ -301,28 +290,21 @@ describe("Testing ElGamal Scheme Circuits\n", () => {
                 );
                 const publicSignals_decrypt = prove_decrypt.publicSignals;
 
-                expect(publicSignals_decrypt[0]).to.equals(input_encrypt.message[0]);
-                expect(publicSignals_decrypt[1]).to.equals(input_encrypt.message[1]);
+                expect(publicSignals_decrypt[0]).to.equals(message[0]);
+                expect(publicSignals_decrypt[1]).to.equals(message[1]);
             }
         });
 
         it("Verify the ElGamal homomorphic property of two random messages", async () => {
-            const keypair = await genKeypair();
-            const encryption1 = await encrypt(keypair.public_key); // encrypt message M1 with the same public key
-            const encryption2 = await encrypt(keypair.public_key); // encrypt message M2 with the same public key
+            const keypair = genKeypair();
+            
+            const encodedMessage1 = genRandomPoint();
+            const encryption1 = genCircuitInputs(keypair, encodedMessage1);
+            const input_encrypt1 = encryption1.input_encrypt;
 
-            // the input for the encrypt circuit is given randomly by the TS code
-            const input_encrypt1 = {
-                message: encryption1.message.map((x) => Fr.toString(x)),
-                nonceKey: encryption1.nonce.toString(),
-                publicKey: keypair.public_key.map((x) => Fr.toString(x)),
-            };
-
-            const input_encrypt2 = {
-                message: encryption2.message.map((x) => Fr.toString(x)),
-                nonceKey: encryption2.nonce.toString(),
-                publicKey: keypair.public_key.map((x) => Fr.toString(x)),
-            };
+            const encodedMessage2 = genRandomPoint();
+            const encryption2 = genCircuitInputs(keypair, encodedMessage2);
+            const input_encrypt2 = encryption2.input_encrypt;
 
             const prove_encrypt1 = await snarkjs.groth16.fullProve(
                 input_encrypt1,
@@ -330,35 +312,37 @@ describe("Testing ElGamal Scheme Circuits\n", () => {
                 zkey_path_encrypt,
             );
             const publicSignals_encrypt1 = prove_encrypt1.publicSignals;
+
             const prove_encrypt2 = await snarkjs.groth16.fullProve(
                 input_encrypt2,
                 wasm_path_encrypt,
                 zkey_path_encrypt,
             );
             const publicSignals_encrypt2 = prove_encrypt2.publicSignals;
-
-            const eM1 = [publicSignals_encrypt1[2], publicSignals_encrypt1[3]].map((x) => Fr.e(x)); // Take the encrypted message ,eM1 from the circuit output
-            const eM2 = [publicSignals_encrypt2[2], publicSignals_encrypt2[3]].map((x) => Fr.e(x)); // Take the encrypted message ,eM2 from the circuit output
+            
+            // Take the first encrypted message from the circuit output
+            const encrypted_message1 = coordinatesToExtPoint(publicSignals_encrypt1[2], publicSignals_encrypt1[3]);
+            // Take the second encrypted message from the circuit output
+            const encrypted_message2 = coordinatesToExtPoint(publicSignals_encrypt2[2], publicSignals_encrypt2[3]); 
 
             // Add both encrypted messages to verify the homomorphic property
-            const encrypted_message3 = babyJub.addPoint(eM1, eM2);
-            // Proving M3 = the decrypted eM3 will prove the homomorphic property
-            const message3 = babyJub.addPoint(encryption1.message, encryption2.message);
+            const encrypted_message3 = encrypted_message1.add(encrypted_message2);
+            // Proving message is equal to the decrypted(encrypted_message3) => will prove the homomorphic property
+            let message3 = encodedMessage1.add(encodedMessage2);
 
-            const ephemeral_key1 = [publicSignals_encrypt1[0], publicSignals_encrypt1[1]].map((x) =>
-                Fr.e(x),
-            ); // Take the ephemeral key ke1 ,from the circuit output
-            const ephemeral_key2 = [publicSignals_encrypt2[0], publicSignals_encrypt2[1]].map((x) =>
-                Fr.e(x),
-            ); // Take the ephemeral key ke2 ,from the circuit output
+            // Take the first ephemeral key from the circuit output
+            const ephemeral_key1 = coordinatesToExtPoint(publicSignals_encrypt1[0], publicSignals_encrypt1[1]);
+            // Take the second ephemeral key from the circuit output
+            const ephemeral_key2 = coordinatesToExtPoint(publicSignals_encrypt2[0], publicSignals_encrypt2[1]);
+
             // The ephemeral key for homomorphic decryption should be ke1+ke2
-            const ephemeral_key3 = babyJub.addPoint(ephemeral_key1, ephemeral_key2);
+            const ephemeral_key3 = ephemeral_key1.add(ephemeral_key2);
 
             // The input of the decrypt circuit is given by the added outputs of the encrypt circuit for M1 and M2
             const input_decrypt3 = {
-                encryptedMessage: encrypted_message3.map((x) => Fr.toString(x)),
-                ephemeralKey: ephemeral_key3.map((x) => Fr.toString(x)),
-                privateKey: keypair.private_key.toString(),
+                encryptedMessage: toStringArray(encrypted_message3),
+                ephemeralKey: toStringArray(ephemeral_key3),
+                privateKey: formatPrivKeyForBabyJub(keypair.privKey),
             };
 
             const prove_decrypt = await snarkjs.groth16.fullProve(
@@ -368,8 +352,8 @@ describe("Testing ElGamal Scheme Circuits\n", () => {
             );
             const publicSignals_decrypt3 = prove_decrypt.publicSignals;
 
-            expect(publicSignals_decrypt3[0]).to.equals(Fr.toString(message3[0]));
-            expect(publicSignals_decrypt3[1]).to.equals(Fr.toString(message3[1]));
+            expect(publicSignals_decrypt3[0]).to.equals(message3.toAffine().x.toString());
+            expect(publicSignals_decrypt3[1]).to.equals(message3.toAffine().y.toString());
         });
     });
 });

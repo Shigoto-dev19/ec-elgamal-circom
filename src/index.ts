@@ -8,7 +8,8 @@ import { ExtPointType } from "@noble/curves/abstract/edwards";
 type SnarkBigInt = bigint;
 type PrivKey = bigint;
 type PubKey = ExtPointType;
-type BabyJubPoint = AffinePoint<bigint>;
+type BabyJubAffinePoint = AffinePoint<bigint>;
+type BabyJubExtPoint = ExtPointType;
 
 /**
  * A private key and a public key
@@ -18,19 +19,12 @@ interface Keypair {
     pubKey: PubKey;
 }
 
-interface ElGamalCiphertext {
-    ephemeralKey: BabyJubPoint;
-    encryptedMessage: BabyJubPoint;
-
-}
-
 // The BN254 group order p
 const SNARK_FIELD_SIZE: SnarkBigInt = BigInt(
     '21888242871839275222246405745257275088548364400416034343698204186575808495617'
 )
 // Textbook Elgamal Encryption Scheme over Baby Jubjub curve without message encoding 
 const babyJub = CURVE.ExtendedPoint;
-babyJub.BASE
 
 /** 
  * Returns a BabyJub-compatible random value. We create it by first generating
@@ -42,7 +36,7 @@ babyJub.BASE
  * @return A BabyJub-compatible random value.
  * @see {@link https://github.com/privacy-scaling-explorations/maci/blob/master/crypto/ts/index.ts}
  */
-const genRandomBabyJubValue = (): bigint => {
+function genRandomBabyJubValue(): bigint {
 
     // Prevent modulo bias
     //const lim = BigInt('0x10000000000000000000000000000000000000000000000000000000000000000')
@@ -72,7 +66,7 @@ const genPrivKey = (): PrivKey => {
     return genRandomBabyJubValue()
 }
 
-/*
+/**
  * @return A BabyJub-compatible salt.
  */
 const genRandomSalt = (): PrivKey => {
@@ -84,15 +78,15 @@ const genRandomSalt = (): PrivKey => {
  * @param privKey A private key generated using genPrivKey()
  * @return A public key associated with the private key
  */
-const genPubKey = (privKey: PrivKey): PubKey => {
+function genPubKey(privKey: PrivKey): PubKey {
     // Check whether privKey is a field element
     privKey = BigInt(privKey.toString())
     assert(privKey < SNARK_FIELD_SIZE)
     return prv2pub(bigInt2Buffer(privKey))
 }
 
-const genKeypair = (): Keypair => {
-    const privKey = formatPrivKeyForBabyJub(genPrivKey())
+function genKeypair(): Keypair {
+    const privKey = genPrivKey()
     const pubKey = genPubKey(privKey)
 
     const Keypair: Keypair = { privKey, pubKey }
@@ -100,7 +94,7 @@ const genKeypair = (): Keypair => {
     return Keypair
 }
 
-function genRandomPoint(): ExtPointType {
+function genRandomPoint(): BabyJubExtPoint {
     const salt = genRandomBabyJubValue()
     return genPubKey(salt)
 }
@@ -109,23 +103,21 @@ function genRandomPoint(): ExtPointType {
  * Encrypts a plaintext such that only the owner of the specified public key
  * may decrypt it.
  * @param pubKey The recepient's public key
- * @param encodedMessage A plaintext encoded as a BabyJub curve point
- * @param randomVal A random value y used along with the private key to generate the ciphertext
+ * @param encodedMessage A plaintext encoded as a BabyJub curve point (optional)
+ * @param randomVal A random value y used along with the private key to generate the ciphertext (optional)
  */
-function encrypt(pubKey: PubKey, encodedMessage?: ExtPointType, randomVal?: bigint) {
+function encrypt(pubKey: PubKey, encodedMessage?: BabyJubExtPoint, randomVal?: bigint) {
     // TODO: test cases for invalid public key
-    // encoded message as point on curve
-    // The sender chooses the message M as a point on the curve
     const message = encodedMessage ?? genRandomPoint();
 
-    // The sender chooses a secret key as a nonce k
+    // The sender chooses a secret key as a nonce
     const nonce = randomVal ?? formatPrivKeyForBabyJub(genRandomSalt());
 
-    // The sender calculates an ephemeral key (nonce) Ke
+    // The sender calculates an ephemeral key => [nonce].Base
     const ephemeral_key = babyJub.BASE.multiply(nonce);
     const masking_key = pubKey.multiply(nonce);
-    let encrypted_message: ExtPointType;
-    // The sender encrypts the message Km
+    let encrypted_message: BabyJubExtPoint;
+    // The sender encrypts the encodedMessage
     if (pubKey.assertValidity && !pubKey.equals(babyJub.ZERO)) {
         encrypted_message = message.add(masking_key);
     } else throw new Error("Invalid Public Key!");
@@ -138,7 +130,7 @@ function encrypt(pubKey: PubKey, encodedMessage?: ExtPointType, randomVal?: bigi
  * @param privKey The private key
  * @param ciphertext The ciphertext to decrypt
  */
-function decrypt(privKey: PrivKey, ephemeral_key: ExtPointType, encrypted_message: ExtPointType): ExtPointType {
+function decrypt(privKey: PrivKey, ephemeral_key: BabyJubExtPoint, encrypted_message: BabyJubExtPoint): BabyJubExtPoint {
 
     // The receiver decrypts the message => encryptedMessage - [privKey].ephemeralKey
     const masking_key = ephemeral_key.multiply(formatPrivKeyForBabyJub(privKey));
@@ -148,7 +140,7 @@ function decrypt(privKey: PrivKey, ephemeral_key: ExtPointType, encrypted_messag
 }
 
 // ElGamal Scheme with specified inputs for testing purposes
-function encrypt_s(message: ExtPointType, public_key: PubKey, nonce?: bigint) {
+function encrypt_s(message: BabyJubExtPoint, public_key: PubKey, nonce?: bigint) {
     nonce = nonce ?? genRandomSalt();
 
     const ephemeral_key = babyJub.BASE.multiply(nonce);
@@ -157,7 +149,26 @@ function encrypt_s(message: ExtPointType, public_key: PubKey, nonce?: bigint) {
 
     return { ephemeral_key, encrypted_message };
 }
+/**
+ * Randomize a ciphertext such that it is different from the original
+ * ciphertext but can be decrypted by the same private key.
+ * @param pubKey The same public key used to encrypt the original encodedMessage
+ * @param ciphertext The ciphertext to re-randomize.
+ * @param randomVal A random value z such that the re-randomized ciphertext could have been generated a random value y+z in the first
+ *                  place (optional)
+ */
+function rerandomize(pubKey: PubKey, ephemeral_key: BabyJubExtPoint, encrypted_message: BabyJubExtPoint, randomVal?: bigint) {
+    const nonce = randomVal ?? genRandomSalt();
+    const randomized_ephemeralKey = ephemeral_key.add(
+        babyJub.BASE.multiply(nonce),
+    )
 
+    const randomized_encryptedMessage = encrypted_message.add(
+        pubKey.multiply(nonce),
+    )
+
+    return { randomized_ephemeralKey, randomized_encryptedMessage }
+}
 export {
     genRandomBabyJubValue,
     genRandomPoint,
@@ -168,4 +179,9 @@ export {
     encrypt,
     encrypt_s,
     decrypt,
+    rerandomize,
+    babyJub,
+    BabyJubAffinePoint,
+    BabyJubExtPoint,
+    Keypair,
 }
