@@ -28,16 +28,17 @@ template Decrypt() {
     isOnCurve[1].x <== ephemeralKey[0];
     isOnCurve[1].y <== ephemeralKey[1];
     
-    component n2b = Num2Bits(253);
+    
     component escalarMul = EscalarMulAny(253);
 
     escalarMul.p[0] <== ephemeralKey[0];
     escalarMul.p[1] <== ephemeralKey[1];
 
     var i;
-    privateKey ==> n2b.in;
+    component privateKeyBits = Num2Bits(253);
+    privateKey ==> privateKeyBits.in;
     for  (i=0; i<253; i++) {
-        n2b.out[i] ==> escalarMul.e[i];
+        privateKeyBits.out[i] ==> escalarMul.e[i];
     }
 
     component addNeg = AddNegate();

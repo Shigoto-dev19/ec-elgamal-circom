@@ -5,6 +5,27 @@ include "../node_modules/circomlib/circuits/bitify.circom";
 include "../node_modules/circomlib/circuits/escalarmulany.circom";
 include "../node_modules/circomlib/circuits/escalarmulfix.circom";
 
+template Encode() {
+    signal input plaintext;
+    signal output out[2];
+
+    // baby jubjub curve base point
+    var base[2] = [
+        5299619240641551281634865583518297030282874472190772894086521144482721001553,
+        16950150798460657717958625567821834550301663161624707787222815936182638968203
+    ]; 
+
+    component plaintextBits = Num2Bits(32);
+    component escalarMulF = EscalarMulFix(32, base);
+
+    var i;
+    plaintext ==> plaintextBits.in;
+    for  (i=0; i<32; i++) {
+        plaintextBits.out[i] ==> escalarMulF.e[i];
+    }
+
+    escalarMulF.out ==> out;
+}
 // TODO: check if isOnCurve is needed -> examine from circomlib
 template Encrypt() {
 
@@ -41,7 +62,7 @@ template Encrypt() {
     isOnCurve[1].x <== message[0];
     isOnCurve[1].y <== message[1];
     
-    // baby jubjub curve generator
+    // baby jubjub curve base point
     var base[2] = [
         5299619240641551281634865583518297030282874472190772894086521144482721001553,
         16950150798460657717958625567821834550301663161624707787222815936182638968203
