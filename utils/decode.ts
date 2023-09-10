@@ -68,11 +68,9 @@ function decode(C, pc: number): bigint {
     }
 }
 
-async function encode(x: bigint) {
-    const babyjub = await buildBabyjub();
-    const Fr = babyjub.F;
-    if (x <= BigInt(2) ** BigInt(32)) {
-        return babyjub.mulPointEscalar(babyjub.Base8, x); //base.multiply(x)
+function encode(plaintext: bigint) {
+    if (plaintext <= BigInt(2) ** BigInt(32)) {
+        return babyJub.BASE.multiplyUnsafe(plaintext); //base.multiply(x)
     } else throw new Error("The input should be 32-bit bigint");
 }
 // xlo and xhi merging  verification

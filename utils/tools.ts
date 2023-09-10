@@ -79,6 +79,10 @@ function coordinatesToExtPoint(x: string, y: string): BabyJubExtPoint {
     
 }
 
+function pruneTo64Bits(originalValue: bigint): bigint {
+    return originalValue & BigInt("0xFFFFFFFFFFFFFFFF");
+}
+
 // Prune the 253-bit BigInt to 32 bits
 function pruneTo32Bits(bigInt253Bit: bigint): bigint {
     // Create a mask for 32 bits (all bits set to 1)
@@ -126,5 +130,6 @@ export {
     toBigIntArray,
     formatPrivKeyForBabyJub,
     coordinatesToExtPoint,
+    pruneTo64Bits,
     pruneTo32Bits,
 }
