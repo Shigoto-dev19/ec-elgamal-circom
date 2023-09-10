@@ -1,6 +1,5 @@
-const buildBabyjub = require("circomlibjs").buildBabyjub;
+import { babyJub } from "../src/index";
 const fs = require("fs");
-
 const ProgressBar = require("cli-progress");
 
 const bar = new ProgressBar.SingleBar({
@@ -14,12 +13,11 @@ const bar = new ProgressBar.SingleBar({
 });
 
 /**
- * Build lookup table to break discrete log for 32-bit scalars for decoding
- * @param pc_size the size of the lookup table to be used --> 2**pc_size
+ * Build a lookup table to break discrete log for 32-bit scalars for decoding
+ * @param precomputeSize the size of the lookup table to be used --> 2**pc_size
  * @returns an object that contains 2**pc_size of keys and values
  */
-
-async function precompute(pc_size) {
+function precompute(precomputeSize: number) {
     const directoryName = "lookupTables";
     // Check if the lookupTables directory exists
     if (!fs.existsSync(directoryName)) {
@@ -27,25 +25,22 @@ async function precompute(pc_size) {
         fs.mkdirSync(directoryName);
         console.log(`Directory "${directoryName}" created.`);
     }
-    const babyjub = await buildBabyjub();
-    const Fr = babyjub.F;
-    const range = 32 - pc_size;
-    const end = BigInt(2) ** BigInt(pc_size);
+    const range = 32 - precomputeSize;
+    const upperBound = BigInt(2) ** BigInt(precomputeSize);
 
-    let lookup = {};
+    let lookupTable = {};
     let key: string;
 
-    bar.start(Number(end), 0);
+    bar.start(Number(upperBound), 0);
 
-    for (let xhi = BigInt(0); xhi < end; xhi++) {
-        key = babyjub.mulPointEscalar(babyjub.Base8, xhi * BigInt(2) ** BigInt(range))[0];
-        // key = base.multiplyUnsafe(xhi *BigInt(2)**BigInt(range)).toAffine().x.toString(16);
-        lookup[Fr.toString(key)] = xhi.toString(16);
+    for (let xhi = BigInt(0); xhi < upperBound; xhi++) {
+        key = babyJub.BASE.multiplyUnsafe(xhi * BigInt(2) ** BigInt(range)).toAffine().x.toString();
+        lookupTable[key] = xhi.toString(16);
         bar.update(Number(xhi) + 1);
     }
     bar.stop();
 
-    fs.writeFileSync(`./lookupTables/x${pc_size}xlookupTable.json`, JSON.stringify(lookup));
+    fs.writeFileSync(`./lookupTables/x${precomputeSize}xlookupTable.json`, JSON.stringify(lookupTable));
 }
 
-precompute(process.argv[2] || 19);
+precompute(Number(process.argv[2]) || 19);

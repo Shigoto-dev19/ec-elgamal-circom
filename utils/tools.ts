@@ -79,6 +79,17 @@ function coordinatesToExtPoint(x: string, y: string): BabyJubExtPoint {
     
 }
 
+// Prune the 253-bit BigInt to 32 bits
+function pruneTo32Bits(bigInt253Bit: bigint): bigint {
+    // Create a mask for 32 bits (all bits set to 1)
+    const mask32Bit = (1n << 32n) - 1n;
+
+    // Prune to 32 bits using the mask
+    const pruned32BitBigInt = bigInt253Bit & mask32Bit;
+
+    return pruned32BitBigInt;
+}
+
 /**
  * - Returns a signal value similar to the "callGetSignalByName" function from the "circom-helper" package.
  * - This function depends on the "circom_tester" package.
@@ -115,4 +126,5 @@ export {
     toBigIntArray,
     formatPrivKeyForBabyJub,
     coordinatesToExtPoint,
+    pruneTo32Bits,
 }

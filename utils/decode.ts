@@ -1,5 +1,5 @@
+import { babyJub } from "../src/index";
 const buildBabyjub = require("circomlibjs").buildBabyjub;
-export { decode, encode, split64 };
 const fs = require("fs");
 
 function fetch_table(pc) {
@@ -15,19 +15,19 @@ let lookupTable;
  * @returns decoded message x from [x]G
  */
 
-async function decode(C, pc: number): Promise<bigint> {
+async function decode_circomlibjs(C, pc: number): Promise<bigint> {
     /* The first time decode is called, it will call fetch_table() and store the lookupTable variable. 
        Subsequent calls to fetchTable() will use the table stored in the lookupTable variable, rather than calling functionA again.
        This will save the time from reading the lookupTable whenever decode is called again
      */
-    if (!lookupTable) {
+    //if (!lookupTable) {
         lookupTable = fetch_table(pc);
-    }
+    //}
     const babyjub = await buildBabyjub();
     const Fr = babyjub.F;
 
     const n = 32 - pc;
-    const end = BigInt(2) ** BigInt(pc);
+    const end = BigInt(2) ** BigInt(n);
 
     for (let xlo = BigInt(0); xlo < end; xlo++) {
         let loBase = babyjub.mulPointEscalar(babyjub.Base8, xlo);
@@ -37,7 +37,33 @@ async function decode(C, pc: number): Promise<bigint> {
         // let key = C.subtract(base.multiplyUnsafe(xlo)).toAffine().x.toString(16);
 
         if (lookupTable.hasOwnProperty(key)) {
-            return xlo + BigInt(2) ** BigInt(n) * BigInt("0x" + lookupTable[key]);
+            return xlo + end * BigInt("0x" + lookupTable[key]);
+        }
+    }
+}
+
+function decode(C, pc: number): bigint {
+    /* The first time decode is called, it will call fetch_table() and store the lookupTable variable. 
+       Subsequent calls to fetchTable() will use the table stored in the lookupTable variable, rather than calling functionA again.
+       This will save the time from reading the lookupTable whenever decode is called again
+     */
+    //if (!lookupTable) {
+        lookupTable = fetch_table(pc);
+    //}
+
+    const n = 32 - pc;
+    const end = BigInt(2) ** BigInt(n);
+
+    for (let xlo = BigInt(0); xlo < end; xlo++) {
+        // let loBase = babyjub.mulPointEscalar(babyjub.Base8, xlo);
+        // loBase[0] = Fr.neg(loBase[0]);
+        // let key = babyjub.addPoint(loBase, C);
+        // key = Fr.toString(key[0]);
+        let loBase = babyJub.BASE.multiplyUnsafe(xlo)
+        let key = C.subtract(loBase).toAffine().x.toString();
+
+        if (lookupTable.hasOwnProperty(key)) {
+            return xlo + end * BigInt("0x" + lookupTable[key]);
         }
     }
 }
@@ -66,15 +92,10 @@ function split64(x: bigint): [bigint, bigint] {
         return [BigInt(xlo), BigInt(xhi)];
     } else throw new Error("The input should be 64-bit bigint");
 }
-// const plaintext = 1651651n;
-// const C = encode(plaintext);
-// console.log('plaintext: ', plaintext);
-// console.log('C point:', C.toAffine());
-// console.time('decoding');
-// const x = decode(C,19);
-// console.log('encoded text: ',x);
-// console.timeEnd('decoding');
 
-// const plaintext = 1651651n;
-// const [xhi, xlo] = split64(plaintext);
-// console.log('Split successful: ',(xlo + 2n**32n*xhi) == plaintext);
+export { 
+    decode_circomlibjs,
+    decode, 
+    encode, 
+    split64,
+ };
