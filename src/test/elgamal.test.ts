@@ -114,6 +114,12 @@ describe("Testing Encoding/Decoding for ElGamal Scheme", async () => {
         assert.throws(exercise, expected);
     });
 
+    it('Check encoded value is a valid BabyJub point', () => {
+        const plaintext = pruneTo32Bits(genRandomSalt());
+        const encoded = encode(plaintext);
+        encoded.assertValidity();
+    })
+
     it("Check compliance of orignal and decoded message as 32-bit numbers", async () => {
         const plaintext = pruneTo32Bits(genRandomSalt());
         const encoded = encode(plaintext);
