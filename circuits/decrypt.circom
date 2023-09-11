@@ -41,10 +41,23 @@ template Decrypt() {
         privateKeyBits.out[i] ==> escalarMul.e[i];
     }
 
-    component addNeg = AddNegate();
-    addNeg.p1 <== encryptedMessage;
-    addNeg.p2 <== escalarMul.out;
+    signal inversedMaskingKey[2];
+    inversedMaskingKey[0] <== - escalarMul.out[0];
+    inversedMaskingKey[1] <== escalarMul.out[1];
+    
+    component add = BabyAdd();
+    
+    add.x1 <== encryptedMessage[0];
+    add.y1 <== encryptedMessage[1];
+    add.x2 <== inversedMaskingKey[0];
+    add.y2 <== inversedMaskingKey[1];
 
-    decryptedMessage <== addNeg.out;
+    decryptedMessage[0] <== add.xout;
+    decryptedMessage[1] <== add.yout;
+
+    // addNeg.p1 <== encryptedMessage;
+    // addNeg.p2 <== escalarMul.out;
+
+    //decryptedMessage <== addNeg.out;
 }
 
