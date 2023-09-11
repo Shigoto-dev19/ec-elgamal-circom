@@ -7,6 +7,8 @@
     "ptau": "./scripts/ptau.sh",
     "build-circuits": "./scripts/build-all-circuits.sh",
     "test": "ts-mocha --timeout 500000000 ./test/*.test.ts --exit",
+    "test-circuits": "ts-mocha --timeout 500000000 ./test/circuits.test.ts --exit",
+    "test-elgamal": "ts-mocha --timeout 500000000 ./test/elgamal.test.ts --exit",
     "delete-lookupTables": "rm ./lookupTables/*.json",
     "precompute-lookupTable": "yarn ts-node ./utils/precompute.ts",
     "r1cs-info-encrypt": "snarkjs ri ./circuits/artifacts/encrypt_test/encrypt.r1cs",

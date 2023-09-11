@@ -21,3 +21,28 @@
 |--------------|----------|--------------|----------|----------|
 | circomlibjs  | 3,116    | 320μs        | -        | -        |
 | noble        | 3,165    | 315μs        | -        | -        |
+
+### Circuit Constraints
+
+#### ElGamal Encryption
+| Property               | Value     |
+|------------------------|-----------|
+| Curve                  | bn-128    |
+| # of Wires             | 3348      |
+| # of Constraints       | 3347      |
+| # of Private Inputs    | 3         |
+| # of Public Inputs     | 2         |
+| # of Labels            | 18273     |
+| # of Outputs           | 4         |
+
+#### ElGamal Decryption
+
+| Property               | Value     |
+|------------------------|-----------|
+| Curve                  | bn-128    |
+| # of Wires             | 2569      |
+| # of Constraints       | 2566      |
+| # of Private Inputs    | 3         |
+| # of Public Inputs     | 2         |
+| # of Labels            | 8156      |
+| # of Outputs           | 2         |
