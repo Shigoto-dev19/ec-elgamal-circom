@@ -82,7 +82,7 @@ template Encrypt() {
     escalarMulF.out[0] ==> ephemeralKey[0];
     escalarMulF.out[1] ==> ephemeralKey[1];
     
-    // calculate the second part of the encrypted message => [k]pk
+    // calculate the second part of the encrypted message => [nonce].PublicKey
     n2b[1] = Num2Bits(253);
     component escalarMul = EscalarMulAny(253);
 

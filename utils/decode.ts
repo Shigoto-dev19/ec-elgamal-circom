@@ -13,15 +13,15 @@ function decode(encoded: ExtPointType, precomputeSize: number): bigint {
        Subsequent calls to fetchTable() will use the table stored in the lookupTable variable, rather than calling functionA again.
        This will save the time from reading the lookupTable whenever decode is called again
      */
-    if (!lookupTable || Object.keys(lookupTable).length != 2**precomputeSize) {
-       lookupTable = fetch_table(precomputeSize);
+    if (!lookupTable || Object.keys(lookupTable).length != 2 ** precomputeSize) {
+        lookupTable = fetch_table(precomputeSize);
     }
 
     const range = 32 - precomputeSize;
     const rangeBound = BigInt(2) ** BigInt(range);
 
     for (let xlo = BigInt(0); xlo < rangeBound; xlo++) {
-        let loBase = babyJub.BASE.multiplyUnsafe(xlo)
+        let loBase = babyJub.BASE.multiplyUnsafe(xlo);
         let key = encoded.subtract(loBase).toAffine().x.toString();
 
         if (lookupTable.hasOwnProperty(key)) {
@@ -47,16 +47,12 @@ function split64(x: bigint): [bigint, bigint] {
     if (x <= limit) {
         const bin64 = padBin(x.toString(2));
         // the first 32 bits
-        const xhi = "0b" + bin64.substring(0, 32); 
+        const xhi = "0b" + bin64.substring(0, 32);
         // the last 32 bits
-        const xlo = "0b" + bin64.substring(32, 64); 
+        const xlo = "0b" + bin64.substring(32, 64);
 
         return [BigInt(xlo), BigInt(xhi)];
     } else throw new Error("The input should be 64-bit bigint");
 }
 
-export { 
-    decode, 
-    encode, 
-    split64,
- };
+export { decode, encode, split64 };

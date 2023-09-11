@@ -3,14 +3,29 @@ const fs = require("fs");
 const expect = require("chai").expect;
 
 import { ExtPointType } from "@noble/curves/abstract/edwards";
-import { genKeypair, genRandomSalt, encrypt, decrypt, genRandomPoint, babyJub, Keypair, BabyJubExtPoint } from "../src";
-import { toStringArray, stringifyBigInts, toBigIntArray, formatPrivKeyForBabyJub, coordinatesToExtPoint } from "../utils/tools";
+import {
+    genKeypair,
+    genRandomSalt,
+    encrypt,
+    decrypt,
+    genRandomPoint,
+    babyJub,
+    Keypair,
+    BabyJubExtPoint,
+} from "../src";
+import {
+    toStringArray,
+    stringifyBigInts,
+    toBigIntArray,
+    formatPrivKeyForBabyJub,
+    coordinatesToExtPoint,
+} from "../utils/tools";
 
 type EncryptCircuitInputs = {
     message: string[];
     nonceKey: string;
     publicKey: string[];
-}
+};
 
 type DecryptCircuitInputs = {
     encryptedMessage: string[];
@@ -24,7 +39,10 @@ const zkey_path_encrypt = "./circuits/artifacts/encrypt_test/encrypt.zkey";
 const wasm_path_decrypt = "./circuits/artifacts/decrypt_test/decrypt.wasm";
 const zkey_path_decrypt = "./circuits/artifacts/decrypt_test/decrypt.zkey";
 
-const genCircuitInputs = (keypair: Keypair, encodedMessage?: BabyJubExtPoint): {
+const genCircuitInputs = (
+    keypair: Keypair,
+    encodedMessage?: BabyJubExtPoint,
+): {
     input_encrypt: EncryptCircuitInputs;
     ephemeral_key: string[];
     encrypted_message: string[];
@@ -36,20 +54,20 @@ const genCircuitInputs = (keypair: Keypair, encodedMessage?: BabyJubExtPoint): {
         nonceKey: encryption.nonce,
         publicKey: toBigIntArray(keypair.pubKey),
     });
-    
-    const ephemeral_key = toStringArray(encryption.ephemeral_key); 
+
+    const ephemeral_key = toStringArray(encryption.ephemeral_key);
     const encrypted_message = toStringArray(encryption.encrypted_message);
-    return { input_encrypt, ephemeral_key, encrypted_message }
-}
+    return { input_encrypt, ephemeral_key, encrypted_message };
+};
 
 describe("Testing ElGamal Scheme Circuits\n", () => {
     context("Testing Encrypt Circuit", () => {
         let input_encrypt: EncryptCircuitInputs;
         let keypair: Keypair;
-        let ephemeral_key: string[]
+        let ephemeral_key: string[];
         let encrypted_message: string[];
 
-        before( () => {
+        before(() => {
             keypair = genKeypair();
             const object = genCircuitInputs(keypair);
             input_encrypt = object.input_encrypt;
@@ -130,7 +148,7 @@ describe("Testing ElGamal Scheme Circuits\n", () => {
         let message: string[];
         let encodedMessage: ExtPointType;
 
-        before( () => {
+        before(() => {
             keypair = genKeypair();
             encodedMessage = genRandomPoint();
             message = toStringArray(encodedMessage);
@@ -197,7 +215,7 @@ describe("Testing ElGamal Scheme Circuits\n", () => {
 
         it("Looped: Verify compliant decrypt output for random inputs", async () => {
             for (let i = 0; i < 5; i++) {
-                keypair = genKeypair()
+                keypair = genKeypair();
                 encodedMessage = genRandomPoint();
                 message = toStringArray(encodedMessage);
 
@@ -239,7 +257,7 @@ describe("Testing ElGamal Scheme Circuits\n", () => {
         let message: string[];
         let encodedMessage: ExtPointType;
 
-        before( () => {
+        before(() => {
             keypair = genKeypair();
             encodedMessage = genRandomPoint();
             message = toStringArray(encodedMessage);
@@ -284,7 +302,7 @@ describe("Testing ElGamal Scheme Circuits\n", () => {
                 input_encrypt = object.input_encrypt;
                 ephemeral_key = object.ephemeral_key;
                 encrypted_message = object.encrypted_message;
-                
+
                 const prove_encrypt = await snarkjs.groth16.fullProve(
                     input_encrypt,
                     wasm_path_encrypt,
@@ -313,7 +331,7 @@ describe("Testing ElGamal Scheme Circuits\n", () => {
 
         it("Verify the ElGamal homomorphic property of two random messages", async () => {
             const keypair = genKeypair();
-            
+
             const encodedMessage1 = genRandomPoint();
             const encryption1 = genCircuitInputs(keypair, encodedMessage1);
             const input_encrypt1 = encryption1.input_encrypt;
@@ -335,11 +353,17 @@ describe("Testing ElGamal Scheme Circuits\n", () => {
                 zkey_path_encrypt,
             );
             const publicSignals_encrypt2 = prove_encrypt2.publicSignals;
-            
+
             // Take the first encrypted message from the circuit output
-            const encrypted_message1 = coordinatesToExtPoint(publicSignals_encrypt1[2], publicSignals_encrypt1[3]);
+            const encrypted_message1 = coordinatesToExtPoint(
+                publicSignals_encrypt1[2],
+                publicSignals_encrypt1[3],
+            );
             // Take the second encrypted message from the circuit output
-            const encrypted_message2 = coordinatesToExtPoint(publicSignals_encrypt2[2], publicSignals_encrypt2[3]); 
+            const encrypted_message2 = coordinatesToExtPoint(
+                publicSignals_encrypt2[2],
+                publicSignals_encrypt2[3],
+            );
 
             // Add both encrypted messages to verify the homomorphic property
             const encrypted_message3 = encrypted_message1.add(encrypted_message2);
@@ -347,9 +371,15 @@ describe("Testing ElGamal Scheme Circuits\n", () => {
             let message3 = encodedMessage1.add(encodedMessage2);
 
             // Take the first ephemeral key from the circuit output
-            const ephemeral_key1 = coordinatesToExtPoint(publicSignals_encrypt1[0], publicSignals_encrypt1[1]);
+            const ephemeral_key1 = coordinatesToExtPoint(
+                publicSignals_encrypt1[0],
+                publicSignals_encrypt1[1],
+            );
             // Take the second ephemeral key from the circuit output
-            const ephemeral_key2 = coordinatesToExtPoint(publicSignals_encrypt2[0], publicSignals_encrypt2[1]);
+            const ephemeral_key2 = coordinatesToExtPoint(
+                publicSignals_encrypt2[0],
+                publicSignals_encrypt2[1],
+            );
 
             // The ephemeral key for homomorphic decryption should be ephemeral_key1 + ephemeral_key2
             const ephemeral_key3 = ephemeral_key1.add(ephemeral_key2);

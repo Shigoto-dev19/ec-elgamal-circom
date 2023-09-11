@@ -34,13 +34,18 @@ function precompute(precomputeSize: number) {
     bar.start(Number(upperBound), 0);
 
     for (let xhi = BigInt(0); xhi < upperBound; xhi++) {
-        key = babyJub.BASE.multiplyUnsafe(xhi * BigInt(2) ** BigInt(range)).toAffine().x.toString();
+        key = babyJub.BASE.multiplyUnsafe(xhi * BigInt(2) ** BigInt(range))
+            .toAffine()
+            .x.toString();
         lookupTable[key] = xhi.toString(16);
         bar.update(Number(xhi) + 1);
     }
     bar.stop();
 
-    fs.writeFileSync(`./lookupTables/x${precomputeSize}xlookupTable.json`, JSON.stringify(lookupTable));
+    fs.writeFileSync(
+        `./lookupTables/x${precomputeSize}xlookupTable.json`,
+        JSON.stringify(lookupTable),
+    );
 }
 
 precompute(Number(process.argv[2]) || 19);

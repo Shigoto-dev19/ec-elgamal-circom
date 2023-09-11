@@ -1,18 +1,18 @@
-const createBlakeHash = require('blake-hash');
+const createBlakeHash = require("blake-hash");
 const ff = require("ffjavascript");
 
-const stringifyBigInts: (obj: object) => any = ff.utils.stringifyBigInts
-const unstringifyBigInts: (obj: object) => any = ff.utils.unstringifyBigInts
+const stringifyBigInts: (obj: object) => any = ff.utils.stringifyBigInts;
+const unstringifyBigInts: (obj: object) => any = ff.utils.unstringifyBigInts;
 
 import { Scalar } from "ffjavascript";
-import { babyJub as CURVE} from "./babyjub-noble";
+import { babyJub as CURVE } from "./babyjub-noble";
 import { BabyJubAffinePoint, BabyJubExtPoint } from "../src";
 const babyJub = CURVE.ExtendedPoint;
 
 // Taken from https://github.com/iden3/circomlibjs/blob/main/src/eddsa.js
 function pruneBuffer(buff) {
-    buff[0] = buff[0] & 0xF8;
-    buff[31] = buff[31] & 0x7F;
+    buff[0] = buff[0] & 0xf8;
+    buff[31] = buff[31] & 0x7f;
     buff[31] = buff[31] | 0x40;
     return buff;
 }
@@ -21,7 +21,7 @@ function pruneBuffer(buff) {
 function prv2pub(prv) {
     const sBuff = pruneBuffer(createBlakeHash("blake512").update(Buffer.from(prv)).digest());
     let s = Scalar.fromRprLE(sBuff, 0, 32);
-    const A = babyJub.BASE.multiply(BigInt(Scalar.shr(s,3)));
+    const A = babyJub.BASE.multiply(BigInt(Scalar.shr(s, 3)));
     return A;
 }
 
@@ -32,20 +32,18 @@ function prv2pub(prv) {
  */
 function formatPrivKeyForBabyJub(privKey: bigint) {
     const sBuff = pruneBuffer(
-        createBlakeHash("blake512").update(
-            bigInt2Buffer(privKey),
-        ).digest().slice(0,32)
-    )
-    const s = ff.utils.leBuff2int(sBuff)
-    return ff.Scalar.shr(s, 3)
+        createBlakeHash("blake512").update(bigInt2Buffer(privKey)).digest().slice(0, 32),
+    );
+    const s = ff.utils.leBuff2int(sBuff);
+    return ff.Scalar.shr(s, 3);
 }
 
 /**
  * Convert a BigInt to a Buffer
  */
 const bigInt2Buffer = (i: BigInt): Buffer => {
-    return Buffer.from(i.toString(16), 'hex')
-}
+    return Buffer.from(i.toString(16), "hex");
+};
 
 /**
  * Convert an EC extended point into an array of two bigints
@@ -54,7 +52,7 @@ function toBigIntArray(point: BabyJubExtPoint): Array<bigint> {
     const point_affine = point.toAffine();
     const x = point_affine.x;
     const y = point_affine.y;
-    return [x, y]
+    return [x, y];
 }
 
 /**
@@ -64,7 +62,7 @@ function toStringArray(point: BabyJubExtPoint): Array<string> {
     const point_affine = point.toAffine();
     const x = point_affine.x.toString();
     const y = point_affine.y.toString();
-    return [x, y]
+    return [x, y];
 }
 
 /**
@@ -75,8 +73,7 @@ function coordinatesToExtPoint(x: string, y: string): BabyJubExtPoint {
     const y_bigint = BigInt(y);
     const affine_point: BabyJubAffinePoint = { x: x_bigint, y: y_bigint };
 
-    return babyJub.fromAffine(affine_point)
-    
+    return babyJub.fromAffine(affine_point);
 }
 
 function pruneTo64Bits(originalValue: bigint): bigint {
@@ -97,18 +94,18 @@ function pruneTo32Bits(bigInt253Bit: bigint): bigint {
 /**
  * - Returns a signal value similar to the "callGetSignalByName" function from the "circom-helper" package.
  * - This function depends on the "circom_tester" package.
- * 
+ *
  * Example usage:
- * 
+ *
  * ```typescript
  * const wasm_tester = require('circom_tester').wasm;
- * 
+ *
  * /// the circuit is loaded only once and it is available for use across multiple test cases.
  * const circuit = await wasm_tester(path.resolve("./circuit/path"));
  * const witness = await circuit.calculateWitness(inputsObject);
  * await circuit.checkConstraints(witness);
  * await circuit.loadSymbols();
- * 
+ *
  * /// You can check signal names by printing "circuit.symbols".
  * /// You will mostly need circuit inputs and outputs.
  * const singalName = 'main.out'
@@ -116,8 +113,8 @@ function pruneTo32Bits(bigInt253Bit: bigint): bigint {
  * ```
  */
 const getSignalByName = (circuit: any, witness: any, signalName: string) => {
-    return witness[circuit.symbols[signalName].varIdx].toString()
-}
+    return witness[circuit.symbols[signalName].varIdx].toString();
+};
 
 export {
     pruneBuffer,
@@ -132,4 +129,4 @@ export {
     coordinatesToExtPoint,
     pruneTo64Bits,
     pruneTo32Bits,
-}
+};

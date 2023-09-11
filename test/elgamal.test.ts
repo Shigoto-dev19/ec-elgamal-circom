@@ -1,20 +1,17 @@
 import { decode, encode, split64 } from "../utils/decode";
 import { assert, expect } from "chai";
-import { 
+import {
     babyJub,
-    genRandomPoint, 
-    genKeypair, 
-    genRandomSalt, 
-    encrypt, 
+    genRandomPoint,
+    genKeypair,
+    genRandomSalt,
+    encrypt,
     encrypt_s,
-    decrypt, 
-    rerandomize
+    decrypt,
+    rerandomize,
 } from "../src";
 
-import { 
-    pruneTo32Bits,
-    pruneTo64Bits,
-} from '../utils/tools';
+import { pruneTo32Bits, pruneTo64Bits } from "../utils/tools";
 
 const b32 = 4294967296n;
 
@@ -27,21 +24,29 @@ describe("Testing ElGamal Scheme on EC points directly", () => {
             encryption.ephemeral_key,
             encryption.encrypted_message,
         );
-        expect(encryption.message.toAffine(), "Decrypted message is different!").deep.equal(decrypted_message.toAffine());
+        expect(encryption.message.toAffine(), "Decrypted message is different!").deep.equal(
+            decrypted_message.toAffine(),
+        );
     });
 
     it("Check unhappy compliance of orignal and decrypted message as points", () => {
         const keypair = genKeypair();
         let encryption = encrypt(keypair.pubKey);
         // we just need to modify any of the inputs
-        const { randomized_ephemeralKey } = rerandomize(keypair.pubKey, encryption.ephemeral_key, encryption.encrypted_message);
+        const { randomized_ephemeralKey } = rerandomize(
+            keypair.pubKey,
+            encryption.ephemeral_key,
+            encryption.encrypted_message,
+        );
         const decrypted_message = decrypt(
             keypair.privKey,
             randomized_ephemeralKey,
             encryption.encrypted_message,
         );
 
-        expect(encryption.message.toAffine(), "Somehting went wrong!").to.not.deep.equal(decrypted_message.toAffine());
+        expect(encryption.message.toAffine(), "Somehting went wrong!").to.not.deep.equal(
+            decrypted_message.toAffine(),
+        );
     });
 
     it("Check LOOPED compliance of orignal and decrypted message as points", () => {
@@ -71,13 +76,11 @@ describe("Testing ElGamal Scheme on EC points directly", () => {
         const encrypted_message3 = encryption1.encrypted_message.add(encryption2.encrypted_message);
         const ephemeral_key3 = encryption1.ephemeral_key.add(encryption2.ephemeral_key);
 
-        const decrypted_message3 = decrypt(
-            keypair.privKey,
-            ephemeral_key3,
-            encrypted_message3,
-        );
+        const decrypted_message3 = decrypt(keypair.privKey, ephemeral_key3, encrypted_message3);
 
-        expect(decrypted_message3.toAffine(), "Invalid linear homomorphism!").to.deep.equal(message3.toAffine());
+        expect(decrypted_message3.toAffine(), "Invalid linear homomorphism!").to.deep.equal(
+            message3.toAffine(),
+        );
     });
 
     it("Check unhappy homomorphic properties for wrong inputs", () => {
@@ -91,13 +94,11 @@ describe("Testing ElGamal Scheme on EC points directly", () => {
         // we only modifiy ephemeral_key3 in this example
         const ephemeral_key3 = encryption1.ephemeral_key.add(babyJub.BASE);
 
-        const decrypted_message3 = decrypt(
-            keypair.privKey,
-            ephemeral_key3,
-            encrypted_message3,
-        );
+        const decrypted_message3 = decrypt(keypair.privKey, ephemeral_key3, encrypted_message3);
 
-        expect(decrypted_message3.toAffine(), "Invalid linear homomorphism!").to.not.deep.equal(message3.toAffine());
+        expect(decrypted_message3.toAffine(), "Invalid linear homomorphism!").to.not.deep.equal(
+            message3.toAffine(),
+        );
     });
 });
 
@@ -109,11 +110,11 @@ describe("Testing Encoding/Decoding for ElGamal Scheme", async () => {
         assert.throws(exercise, expected);
     });
 
-    it('Check encoded value is a valid BabyJub point', () => {
+    it("Check encoded value is a valid BabyJub point", () => {
         const plaintext = pruneTo32Bits(genRandomSalt());
         const encoded = encode(plaintext);
         encoded.assertValidity();
-    })
+    });
 
     it("Check compliance of orignal and decoded message as 32-bit numbers", async () => {
         const plaintext = pruneTo32Bits(genRandomSalt());
