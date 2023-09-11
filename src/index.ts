@@ -111,7 +111,7 @@ function encrypt(pubKey: PubKey, encodedMessage?: BabyJubExtPoint, randomVal?: b
     const message = encodedMessage ?? genRandomPoint();
 
     // The sender chooses a secret key as a nonce
-    const nonce = randomVal ?? formatPrivKeyForBabyJub(genRandomSalt());
+    const nonce: bigint = randomVal ?? formatPrivKeyForBabyJub(genRandomSalt());
 
     // The sender calculates an ephemeral key => [nonce].Base
     const ephemeral_key = babyJub.BASE.multiply(nonce);
