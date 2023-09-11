@@ -1,13 +1,10 @@
 import * as bench from 'micro-bmark';
-import { encrypt, genKeypair, decrypt } from "../src/index";
-import { babyJub as CURVE} from "../utils/babyjub-noble";
-import { getSignalByName, stringifyBigInts, toBigIntArray, toStringArray, formatPrivKeyForBabyJub } from '../utils/tools';
+import { encrypt, genKeypair } from "../src/index";
+import { getSignalByName, stringifyBigInts, toBigIntArray, toStringArray } from '../utils/tools';
 
 const snarkjs = require("snarkjs");
 const path = require("path");
 const wasm_tester = require('circom_tester').wasm;
-
-const babyJub = CURVE.ExtendedPoint;
 
 const wasm_path_encrypt = "./circuits/artifacts/encrypt_test/encrypt.wasm";
 const zkey_path_encrypt = "./circuits/artifacts/encrypt_test/encrypt.zkey";

@@ -26,7 +26,7 @@ template Encode() {
 
     escalarMulF.out ==> out;
 }
-// TODO: check if isOnCurve is needed -> examine from circomlib
+
 template Encrypt() {
 
     // message encoded as a point on the curve: M = [x]G, G: curve base point

@@ -3,9 +3,7 @@ pragma circom 2.1.2;
 include "../node_modules/circomlib/circuits/babyjub.circom";
 include "../node_modules/circomlib/circuits/bitify.circom";
 include "../node_modules/circomlib/circuits/escalarmulany.circom";
-include "negatePoint.circom";
 
-// TODO: check if isOnCurve is need -> examine from circomlib
 template Decrypt() {
 
     // sender's encrypted message
@@ -54,10 +52,5 @@ template Decrypt() {
 
     decryptedMessage[0] <== add.xout;
     decryptedMessage[1] <== add.yout;
-
-    // addNeg.p1 <== encryptedMessage;
-    // addNeg.p2 <== escalarMul.out;
-
-    //decryptedMessage <== addNeg.out;
 }
 

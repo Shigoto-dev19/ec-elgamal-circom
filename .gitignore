@@ -1,10 +1,6 @@
 node_modules
-./circuits/artifacts/*
+circuits/artifacts
+lookupTables
 
-# Build
-./lookupTables/binTables
-./lookupTables/*.json
-./build/workerPool
-./build/bin-utils.ts
 
 
