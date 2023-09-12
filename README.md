@@ -96,7 +96,19 @@ By providing configuration containing your Phase 1 Powers of Tau and circuits, t
 
 3. Output your `wasm` and `zkey` files
 
-  
+## Security Considerations
+
+- [ERC-2494](https://eips.ethereum.org/EIPS/eip-2494) points to a set of solid security considerations that prove that the Baby Jubjub elliptic curve is indeed resistant against ```weak curve attacks``.
+- The literature also states that the discrete logarithm problem remains difficult in the Baby Jubjub curve verifiying resistance againt the following known attacks:
+  - ```Rho method```
+  - ```Additive and multiplicative transfers ```
+  - ```High discriminant```
+- The package ```@noble/curves``` offers securtiy against ```time attacks``` for EC multiplication that is explicitly included in its API.
+- The public key in the encrypt circuit is checked to be a **point on curve** and **not an infinity point** as a counter for ```invalid curve attacks```(same logic applied for the ts code).
+- The nonces and big numbers are randomly generators by RNG functions imported from the [maci](https://github.com/privacy-scaling-explorations/maci/blob/master/crypto/ts/index.ts) package that depends on secure audited code.
+
+
+
 
 ## References
 
