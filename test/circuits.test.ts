@@ -1,6 +1,10 @@
 const snarkjs = require("snarkjs");
 const fs = require("fs");
 const expect = require("chai").expect;
+const chai = require("chai");
+const chaiAsPromised = require("chai-as-promised");
+// Load chai-as-promised support
+chai.use(chaiAsPromised);
 
 import { ExtPointType } from "@noble/curves/abstract/edwards";
 import {
@@ -87,6 +91,60 @@ describe("Testing ElGamal Scheme Circuits\n", () => {
 
             const res = await snarkjs.groth16.verify(vKey, publicSignals, proof);
             expect(res).to.equal(true);
+        });
+
+        it("Verify circuit is resistant to invalid curve attacks: Invalid Public Key: not on curve", async () => {
+            const invalid_input = {
+                message: input_encrypt.message,
+                nonceKey: input_encrypt.nonceKey,
+                publicKey: ["1", "0"],
+            }
+            try {
+                await snarkjs.groth16.fullProve(
+                    invalid_input,
+                    wasm_path_encrypt,
+                    zkey_path_encrypt,
+                );
+                throw new Error('Expected to throw an error');
+            } catch (error) {
+                expect(error.message).to.contain("Error: Assert Failed. Error in template BabyCheck_2 line: 82\nError in template Encrypt_19 line: 59")
+            }
+        });
+
+        it("Verify circuit is resistant to invalid curve attacks: Invalid Public Key: identity", async () => {
+            const invalid_input = {
+                message: input_encrypt.message,
+                nonceKey: input_encrypt.nonceKey,
+                publicKey: ["0", "1"],
+            }
+            try {
+                await snarkjs.groth16.fullProve(
+                    invalid_input,
+                    wasm_path_encrypt,
+                    zkey_path_encrypt,
+                );
+                throw new Error('Expected to throw an error');
+            } catch (error) {
+                expect(error.message).to.contain("Error: Assert Failed. Error in template Encrypt_19 line: 52")
+            }
+        });
+
+        it("Verify Message assertion to be a point on curve", async () => {
+            const invalid_input = {
+                message: ["1", "0"],
+                nonceKey: input_encrypt.nonceKey,
+                publicKey: input_encrypt.publicKey,
+            }
+            try {
+                await snarkjs.groth16.fullProve(
+                    invalid_input,
+                    wasm_path_encrypt,
+                    zkey_path_encrypt,
+                );
+                throw new Error('Expected to throw an error');
+            } catch (error) {
+                expect(error.message).to.contain("Error: Assert Failed. Error in template BabyCheck_2 line: 82\nError in template Encrypt_19 line: 64")
+            }
         });
 
         it("Verify compliant encrypt output", async () => {
@@ -177,6 +235,42 @@ describe("Testing ElGamal Scheme Circuits\n", () => {
 
             const res = await snarkjs.groth16.verify(vKey, publicSignals, proof);
             expect(res).to.equal(true);
+        });
+
+        it("Verify encryptedMessage assertion to be a point on curve", async () => {
+            const invalid_input = {
+                encryptedMessage: ["1", "0"],
+                ephemeralKey: input_decrypt.ephemeralKey,
+                privateKey: input_decrypt.privateKey,
+            }
+            try {
+                await snarkjs.groth16.fullProve(
+                    invalid_input,
+                    wasm_path_decrypt,
+                    zkey_path_decrypt,
+                );
+                throw new Error('Expected to throw an error');
+            } catch (error) {
+                expect(error.message).to.contain("Error: Assert Failed. Error in template BabyCheck_0 line: 82\nError in template Decrypt_13 line: 23")
+            }
+        });
+
+        it("Verify ephemeralKey assertion to be a point on curve", async () => {
+            const invalid_input = {
+                encryptedMessage: input_decrypt.encryptedMessage,
+                ephemeralKey: ["1", "0"],
+                privateKey: input_decrypt.privateKey,
+            }
+            try {
+                await snarkjs.groth16.fullProve(
+                    invalid_input,
+                    wasm_path_decrypt,
+                    zkey_path_decrypt,
+                );
+                throw new Error('Expected to throw an error');
+            } catch (error) {
+                expect(error.message).to.contain("Error: Assert Failed. Error in template BabyCheck_0 line: 82\nError in template Decrypt_13 line: 27")
+            }
         });
 
         it("Verify compliant decrypt output", async () => {

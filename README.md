@@ -105,6 +105,7 @@ By providing configuration containing your Phase 1 Powers of Tau and circuits, t
   - ```High discriminant```
 - The package ```@noble/curves``` offers securtiy against ```time attacks``` for EC multiplication that is explicitly included in its API.
 - The public key in the encrypt circuit is checked to be a **point on curve** and **not an infinity point** as a counter for ```invalid curve attacks```(same logic applied for the ts code).
+- The ephemeralKey and encryptedMessage inputs are also checked to be points on curve inside the Decrypt circuit.
 - The nonces and big numbers are randomly generators by RNG functions imported from the [maci](https://github.com/privacy-scaling-explorations/maci/blob/master/crypto/ts/index.ts) package that depends on secure audited code.
 
 
