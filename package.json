@@ -6,8 +6,8 @@
   "scripts": {
     "ptau": "./scripts/ptau.sh",
     "build-circuits": "./scripts/build-all-circuits.sh",
-    "test": "ts-mocha --timeout 500000000 ./test/*.test.ts --exit",
-    "test-circuits": "ts-mocha --timeout 500000000 ./test/circuits.test.ts --exit",
+    "test": "ts-mocha --timeout 500000 --require mocha-suppress-logs ./test/*.test.ts --exit",
+    "test-circuits": "ts-mocha --timeout 5000000 --require mocha-suppress-logs ./test/circuits.test.ts --exit",
     "test-elgamal": "ts-mocha --timeout 500000000 ./test/elgamal.test.ts --exit",
     "delete-lookupTables": "rm ./lookupTables/*.json",
     "precompute-lookupTable": "yarn ts-node ./utils/precompute.ts",
@@ -41,6 +41,7 @@
     "cli-progress": "^3.11.2",
     "micro-bmark": "^0.3.1",
     "mocha": "^10.2.0",
+    "mocha-suppress-logs": "^0.3.1",
     "prettier": "^3.0.3",
     "ts-mocha": "^10.0.0",
     "ts-node": "^10.9.1",
