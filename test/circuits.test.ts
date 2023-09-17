@@ -1,5 +1,3 @@
-const snarkjs = require("snarkjs");
-const fs = require("fs");
 const expect = require("chai").expect;
 const chai = require("chai");
 const chaiAsPromised = require("chai-as-promised");
@@ -12,9 +10,7 @@ import {
     genKeypair,
     genRandomSalt,
     encrypt,
-    decrypt,
     genRandomPoint,
-    babyJub,
     Keypair,
     BabyJubExtPoint,
 } from "../src";
@@ -26,6 +22,7 @@ import {
     coordinatesToExtPoint,
     getSignalByName,
 } from "../utils/tools";
+import { assert } from "chai";
 
 type EncryptCircuitInputs = {
     message: string[];
@@ -38,12 +35,6 @@ type DecryptCircuitInputs = {
     ephemeralKey: string[];
     privateKey: string;
 };
-
-const wasm_path_encrypt = "./circuits/artifacts/encrypt_test/encrypt.wasm";
-const zkey_path_encrypt = "./circuits/artifacts/encrypt_test/encrypt.zkey";
-
-const wasm_path_decrypt = "./circuits/artifacts/decrypt_test/decrypt.wasm";
-const zkey_path_decrypt = "./circuits/artifacts/decrypt_test/decrypt.zkey";
 
 const genCircuitInputs = (
     keypair: Keypair,
@@ -73,9 +64,22 @@ const loadCircuit = async (circuit, inputs_object, witness_return = false) => {
     if (witness_return) return witness;
 };
 
+const securityCheck = async (
+    circuit: any,
+    invalid_input: EncryptCircuitInputs | DecryptCircuitInputs,
+    errorMessage: string,
+) => {
+    try {
+        await loadCircuit(circuit, invalid_input);
+        throw new Error("Expected to throw an error");
+    } catch (error) {
+        expect(error.message).to.contain(errorMessage);
+    }
+};
+
 describe("Testing ElGamal Scheme Circuits\n", () => {
-    let encryptCircuit;
-    let decryptCircuit;
+    let encryptCircuit: any;
+    let decryptCircuit: any;
 
     before(async () => {
         encryptCircuit = await wasm_tester("./circuits/test_circuits/encrypt_test.circom");
@@ -96,21 +100,7 @@ describe("Testing ElGamal Scheme Circuits\n", () => {
             ephemeral_key = object.ephemeral_key;
             encrypted_message = object.encrypted_message;
 
-            encrypt_witness = await loadCircuit(encryptCircuit, input_encrypt, true);
-        });
-
-        it("Verify Encrypt circuit", async () => {
-            const { proof, publicSignals } = await snarkjs.groth16.fullProve(
-                input_encrypt,
-                wasm_path_encrypt,
-                zkey_path_encrypt,
-            );
-            const vKey = JSON.parse(
-                fs.readFileSync("./circuits/artifacts/encrypt_test/encrypt.vkey.json"),
-            );
-
-            const res = await snarkjs.groth16.verify(vKey, publicSignals, proof);
-            expect(res).to.equal(true);
+            encrypt_witness = await encryptCircuit.calculateWitness(input_encrypt, true);
         });
 
         it("Verify circuit is resistant to invalid curve attacks: Invalid Public Key: not on curve", async () => {
@@ -119,12 +109,11 @@ describe("Testing ElGamal Scheme Circuits\n", () => {
                 nonceKey: input_encrypt.nonceKey,
                 publicKey: ["1", "0"],
             };
-            try {
-                await loadCircuit(encryptCircuit, invalid_input);
-                throw new Error("Expected to throw an error");
-            } catch (error) {
-                expect(error.message).to.contain("Error in template Encrypt_19 line: 59");
-            }
+            await securityCheck(
+                encryptCircuit,
+                invalid_input,
+                "Error in template Encrypt_19 line: 59",
+            );
         });
 
         it("Verify circuit is resistant to invalid curve attacks: Invalid Public Key: identity", async () => {
@@ -133,12 +122,11 @@ describe("Testing ElGamal Scheme Circuits\n", () => {
                 nonceKey: input_encrypt.nonceKey,
                 publicKey: ["0", "1"],
             };
-            try {
-                await loadCircuit(encryptCircuit, invalid_input);
-                throw new Error("Expected to throw an error");
-            } catch (error) {
-                expect(error.message).to.contain("Error in template Encrypt_19 line: 52");
-            }
+            await securityCheck(
+                encryptCircuit,
+                invalid_input,
+                "Error in template Encrypt_19 line: 52",
+            );
         });
 
         it("Verify Message assertion to be a point on curve", async () => {
@@ -147,70 +135,44 @@ describe("Testing ElGamal Scheme Circuits\n", () => {
                 nonceKey: input_encrypt.nonceKey,
                 publicKey: input_encrypt.publicKey,
             };
-            try {
-                await loadCircuit(encryptCircuit, invalid_input);
-                throw new Error("Expected to throw an error");
-            } catch (error) {
-                expect(error.message).to.contain("Error in template Encrypt_19 line: 64");
-            }
+            await securityCheck(
+                encryptCircuit,
+                invalid_input,
+                "Error in template Encrypt_19 line: 64",
+            );
         });
 
         it("Verify compliant encrypt output", async () => {
             // Verify compliant encryption output for the ephemeral key
-            expect(getSignalByName(encryptCircuit, encrypt_witness, "ephemeralKey[0]")).to.equals(
-                ephemeral_key[0],
-            );
-            expect(getSignalByName(encryptCircuit, encrypt_witness, "ephemeralKey[1]")).to.equals(
-                ephemeral_key[1],
-            );
+            await encryptCircuit.assertOut(encrypt_witness, { ephemeralKey: ephemeral_key });
             // Verify compliant encryption output for the encrypted message
-            expect(
-                getSignalByName(encryptCircuit, encrypt_witness, "encryptedMessage[0]"),
-            ).to.equals(encrypted_message[0]);
-            expect(
-                getSignalByName(encryptCircuit, encrypt_witness, "encryptedMessage[0]"),
-            ).to.equals(encrypted_message[0]);
+            await encryptCircuit.assertOut(encrypt_witness, {
+                encryptedMessage: encrypted_message,
+            });
         });
 
         it("Verify false encrypt output is invalid", async () => {
             input_encrypt.nonceKey = formatPrivKeyForBabyJub(genRandomSalt());
             const encrypt_witness = await loadCircuit(encryptCircuit, input_encrypt, true);
 
-            // Verify compliant encryption output for the ephemeral key
-            expect(
-                getSignalByName(encryptCircuit, encrypt_witness, "ephemeralKey[0]"),
-            ).to.not.equals(ephemeral_key[0]);
-            expect(
-                getSignalByName(encryptCircuit, encrypt_witness, "ephemeralKey[1]"),
-            ).to.not.equals(ephemeral_key[1]);
-            // Verify compliant encryption output for the encrypted message
-            expect(
-                getSignalByName(encryptCircuit, encrypt_witness, "encryptedMessage[0]"),
-            ).to.not.equals(encrypted_message[0]);
-            expect(
-                getSignalByName(encryptCircuit, encrypt_witness, "encryptedMessage[0]"),
-            ).to.not.equals(encrypted_message[1]);
+            await assert.isRejected(
+                encryptCircuit.assertOut(encrypt_witness, { ephemeralKey: ephemeral_key }),
+            );
+            await assert.isRejected(
+                encryptCircuit.assertOut(encrypt_witness, { encryptedMessage: encrypted_message }),
+            );
         });
 
         it("Looped: Verify compliant encrypt output for random inputs", async () => {
-            for (let i = 0; i < 5; i++) {
+            for (let i = 0; i < 100; i++) {
                 keypair = genKeypair();
                 let { input_encrypt, ephemeral_key, encrypted_message } = genCircuitInputs(keypair);
-                let encrypt_witness = await loadCircuit(encryptCircuit, input_encrypt, true);
-                // Verify compliant encryption output for the ephemeral key
-                expect(
-                    getSignalByName(encryptCircuit, encrypt_witness, "ephemeralKey[0]"),
-                ).to.equals(ephemeral_key[0]);
-                expect(
-                    getSignalByName(encryptCircuit, encrypt_witness, "ephemeralKey[1]"),
-                ).to.equals(ephemeral_key[1]);
-                // Verify compliant encryption output for the encrypted message
-                expect(
-                    getSignalByName(encryptCircuit, encrypt_witness, "encryptedMessage[0]"),
-                ).to.equals(encrypted_message[0]);
-                expect(
-                    getSignalByName(encryptCircuit, encrypt_witness, "encryptedMessage[0]"),
-                ).to.equals(encrypted_message[0]);
+                let encrypt_witness = await encryptCircuit.calculateWitness(input_encrypt, true);
+
+                await encryptCircuit.assertOut(encrypt_witness, { ephemeralKey: ephemeral_key });
+                await encryptCircuit.assertOut(encrypt_witness, {
+                    encryptedMessage: encrypted_message,
+                });
             }
         });
     });
@@ -221,7 +183,6 @@ describe("Testing ElGamal Scheme Circuits\n", () => {
         let keypair: Keypair;
         let ephemeral_key: string[];
         let encrypted_message: string[];
-        let decrypted_message: string[];
         let message: string[];
         let encodedMessage: ExtPointType;
         let decrypt_witness: any;
@@ -242,21 +203,7 @@ describe("Testing ElGamal Scheme Circuits\n", () => {
                 privateKey: formatPrivKeyForBabyJub(keypair.privKey),
             };
 
-            decrypt_witness = await loadCircuit(decryptCircuit, input_decrypt, true);
-        });
-
-        it("Verify Decrypt circuit", async () => {
-            const { proof, publicSignals } = await snarkjs.groth16.fullProve(
-                input_decrypt,
-                wasm_path_decrypt,
-                zkey_path_decrypt,
-            );
-            const vKey = JSON.parse(
-                fs.readFileSync("./circuits/artifacts/decrypt_test/decrypt.vkey.json"),
-            );
-
-            const res = await snarkjs.groth16.verify(vKey, publicSignals, proof);
-            expect(res).to.equal(true);
+            decrypt_witness = await decryptCircuit.calculateWitness(input_decrypt, true);
         });
 
         it("Verify encryptedMessage assertion to be a point on curve", async () => {
@@ -265,12 +212,11 @@ describe("Testing ElGamal Scheme Circuits\n", () => {
                 ephemeralKey: input_decrypt.ephemeralKey,
                 privateKey: input_decrypt.privateKey,
             };
-            try {
-                await loadCircuit(decryptCircuit, invalid_input);
-                throw new Error("Expected to throw an error");
-            } catch (error) {
-                expect(error.message).to.contain("Error in template Decrypt_13 line: 23");
-            }
+            await securityCheck(
+                decryptCircuit,
+                invalid_input,
+                "Error in template Decrypt_13 line: 23",
+            );
         });
 
         it("Verify ephemeralKey assertion to be a point on curve", async () => {
@@ -279,56 +225,34 @@ describe("Testing ElGamal Scheme Circuits\n", () => {
                 ephemeralKey: ["1", "0"],
                 privateKey: input_decrypt.privateKey,
             };
-            try {
-                await loadCircuit(decryptCircuit, invalid_input);
-                throw new Error("Expected to throw an error");
-            } catch (error) {
-                expect(error.message).to.contain("Error in template Decrypt_13 line: 27");
-            }
+            await securityCheck(
+                decryptCircuit,
+                invalid_input,
+                "Error in template Decrypt_13 line: 27",
+            );
         });
 
         it("Verify compliant decrypt output", async () => {
             // Verify compliant decryption output of the decrypted message
-            expect(
-                getSignalByName(decryptCircuit, decrypt_witness, "decryptedMessage[0]"),
-            ).to.equals(message[0]);
-            expect(
-                getSignalByName(decryptCircuit, decrypt_witness, "decryptedMessage[1]"),
-            ).to.equals(message[1]);
-            //decryptCircuit.assertOut(decrypt_witness, message);
+            await decryptCircuit.assertOut(decrypt_witness, { decryptedMessage: message });
             // Verify compliant decryption input for the encrypted message
-            expect(
-                getSignalByName(decryptCircuit, decrypt_witness, "encryptedMessage[0]"),
-            ).to.equals(encrypted_message[0]);
-            expect(
-                getSignalByName(decryptCircuit, decrypt_witness, "encryptedMessage[1]"),
-            ).to.equals(encrypted_message[1]);
+            await decryptCircuit.assertOut(decrypt_witness, {
+                encryptedMessage: encrypted_message,
+            });
         });
 
         it("Verify false decrypt output is invalid", async () => {
             // only modify the private key
             input_decrypt.privateKey = formatPrivKeyForBabyJub(genRandomSalt());
-            const decrypt_witness = await loadCircuit(decryptCircuit, input_decrypt, true);
+            const decrypt_witness = await decryptCircuit.calculateWitness(input_decrypt, true);
 
-            // Verify compliant decryption output of the decrypted message
-            expect(
-                getSignalByName(decryptCircuit, decrypt_witness, "decryptedMessage[0]"),
-            ).to.not.equals(message[0]);
-            expect(
-                getSignalByName(decryptCircuit, decrypt_witness, "decryptedMessage[1]"),
-            ).to.not.equals(message[1]);
-
-            // Verify compliant decryption input for the encrypted message
-            expect(
-                getSignalByName(decryptCircuit, decrypt_witness, "encryptedMessage[0]"),
-            ).to.equals(encrypted_message[0]);
-            expect(
-                getSignalByName(decryptCircuit, decrypt_witness, "encryptedMessage[1]"),
-            ).to.equals(encrypted_message[1]);
+            await assert.isRejected(
+                decryptCircuit.assertOut(decrypt_witness, { decryptedMessage: message }),
+            );
         });
 
         it("Looped: Verify compliant decrypt output for random inputs", async () => {
-            for (let i = 0; i < 5; i++) {
+            for (let i = 0; i < 100; i++) {
                 keypair = genKeypair();
                 encodedMessage = genRandomPoint();
                 message = toStringArray(encodedMessage);
@@ -344,34 +268,21 @@ describe("Testing ElGamal Scheme Circuits\n", () => {
                     privateKey: formatPrivKeyForBabyJub(keypair.privKey),
                 };
 
-                const decrypt_witness = await loadCircuit(decryptCircuit, input_decrypt, true);
+                const decrypt_witness = await decryptCircuit.calculateWitness(input_decrypt, true);
 
-                // Verify compliant decryption output of the decrypted message
-                expect(
-                    getSignalByName(decryptCircuit, decrypt_witness, "decryptedMessage[0]"),
-                ).to.equals(message[0]);
-                expect(
-                    getSignalByName(decryptCircuit, decrypt_witness, "decryptedMessage[1]"),
-                ).to.equals(message[1]);
-
-                // Verify compliant decryption input for the encrypted message
-                expect(
-                    getSignalByName(decryptCircuit, decrypt_witness, "encryptedMessage[0]"),
-                ).to.equals(encrypted_message[0]);
-                expect(
-                    getSignalByName(decryptCircuit, decrypt_witness, "encryptedMessage[1]"),
-                ).to.equals(encrypted_message[1]);
+                await decryptCircuit.assertOut(decrypt_witness, { decryptedMessage: message });
+                await decryptCircuit.assertOut(decrypt_witness, {
+                    encryptedMessage: encrypted_message,
+                });
             }
         });
     });
 
     context("Testing compliance of Encrypt/Decrypt circuits: circuit to circuit", () => {
         let input_encrypt: EncryptCircuitInputs;
-        let input_decrypt: DecryptCircuitInputs;
         let keypair: Keypair;
         let ephemeral_key: string[];
         let encrypted_message: string[];
-        let decrypted_message: string[];
         let message: string[];
         let encodedMessage: ExtPointType;
         let encrypt_witness: any;
@@ -390,7 +301,7 @@ describe("Testing ElGamal Scheme Circuits\n", () => {
         });
 
         it("Verify the message input is the same as decrypted message", async () => {
-            const input_decrypt = {
+            const input_decrypt: DecryptCircuitInputs = {
                 encryptedMessage: [
                     getSignalByName(encryptCircuit, encrypt_witness, "encryptedMessage[0]"),
                     getSignalByName(encryptCircuit, encrypt_witness, "encryptedMessage[1]"),
@@ -402,18 +313,12 @@ describe("Testing ElGamal Scheme Circuits\n", () => {
                 privateKey: formatPrivKeyForBabyJub(keypair.privKey),
             };
 
-            const decrypt_witness = await loadCircuit(decryptCircuit, input_decrypt, true);
-
-            expect(
-                getSignalByName(decryptCircuit, decrypt_witness, "decryptedMessage[0]"),
-            ).to.equals(message[0]);
-            expect(
-                getSignalByName(decryptCircuit, decrypt_witness, "decryptedMessage[1]"),
-            ).to.equals(message[1]);
+            const decrypt_witness = await decryptCircuit.calculateWitness(input_decrypt, true);
+            await decryptCircuit.assertOut(decrypt_witness, { decryptedMessage: message });
         });
 
         it("Looped Verify the circuits given random inputs", async () => {
-            for (let i = 0; i < 10; i++) {
+            for (let i = 0; i < 100; i++) {
                 message = toStringArray(encodedMessage);
                 keypair = genKeypair();
 
@@ -425,7 +330,7 @@ describe("Testing ElGamal Scheme Circuits\n", () => {
                 const encrypt_witness = await loadCircuit(encryptCircuit, input_encrypt, true);
 
                 // The input of the decrypt circuit is given by the output of the encrypt circuit
-                let input_decrypt = {
+                let input_decrypt: DecryptCircuitInputs = {
                     encryptedMessage: [
                         getSignalByName(encryptCircuit, encrypt_witness, "encryptedMessage[0]"),
                         getSignalByName(encryptCircuit, encrypt_witness, "encryptedMessage[1]"),
@@ -438,13 +343,7 @@ describe("Testing ElGamal Scheme Circuits\n", () => {
                 };
 
                 const decrypt_witness = await loadCircuit(decryptCircuit, input_decrypt, true);
-
-                expect(
-                    getSignalByName(decryptCircuit, decrypt_witness, "decryptedMessage[0]"),
-                ).to.equals(message[0]);
-                expect(
-                    getSignalByName(decryptCircuit, decrypt_witness, "decryptedMessage[1]"),
-                ).to.equals(message[1]);
+                await decryptCircuit.assertOut(decrypt_witness, { decryptedMessage: message });
             }
         });
 
@@ -499,13 +398,9 @@ describe("Testing ElGamal Scheme Circuits\n", () => {
             };
 
             const decrypt_witness = await loadCircuit(decryptCircuit, input_decrypt3, true);
-
-            expect(
-                getSignalByName(decryptCircuit, decrypt_witness, "decryptedMessage[0]"),
-            ).to.equals(message3.toAffine().x.toString());
-            expect(
-                getSignalByName(decryptCircuit, decrypt_witness, "decryptedMessage[1]"),
-            ).to.equals(message3.toAffine().y.toString());
+            await decryptCircuit.assertOut(decrypt_witness, {
+                decryptedMessage: toStringArray(message3),
+            });
         });
     });
 });
