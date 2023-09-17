@@ -19,7 +19,7 @@
     "benchmark-circom_tester": "yarn ts-node ./benchmark/circuit.ts",
     "benchmark-decode": "yarn ts-node ./benchmark/decode.ts",
     "format": "yarn prettier --write \"src/**/*.{ts,js}\" \"test/**/*.{ts,js}\" \"utils/**/*.{ts,js}\" -w",
-    "lint": "yarn prettier \"src/**/*{ts,js}\" --check"
+    "lint": "yarn prettier \"src/**/*{ts,js}\" \"test/**/*.{ts,js}\" \"utils/**/*.{ts,js}\" --check"
   },
   "keywords": [
     "ZKP",

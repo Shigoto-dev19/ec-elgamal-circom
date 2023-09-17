@@ -108,12 +108,13 @@ function pruneTo32Bits(bigInt253Bit: bigint): bigint {
  *
  * /// You can check signal names by printing "circuit.symbols".
  * /// You will mostly need circuit inputs and outputs.
- * const singalName = 'main.out'
- * const signalValue = getSignalByName(circuit, witness, SignalName)
+ * const singalName = 'ciphertext'; // ciphertext[0]
+ * const signalValue = getSignalByName(circuit, witness, SignalName);
  * ```
  */
 const getSignalByName = (circuit: any, witness: any, signalName: string) => {
-    return witness[circuit.symbols[signalName].varIdx].toString();
+    const signal = `main.${signalName}`;
+    return witness[circuit.symbols[signal].varIdx].toString();
 };
 
 export {

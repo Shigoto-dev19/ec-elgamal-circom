@@ -47,9 +47,8 @@ async function test_circom_tester(circuit) {
     await circuit.checkConstraints(witness);
     await circuit.loadSymbols();
 
-
-    const resX = (getSignalByName(circuit, witness, 'main.encryptedMessage[0]') == encrypted_message[0]);
-    const resY = (getSignalByName(circuit, witness, 'main.encryptedMessage[1]') == encrypted_message[1]);
+    const resX = (getSignalByName(circuit, witness, 'encryptedMessage[0]') == encrypted_message[0]);
+    const resY = (getSignalByName(circuit, witness, 'encryptedMessage[1]') == encrypted_message[1]);
     return resX && resY
 }
 
